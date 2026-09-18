@@ -3,10 +3,11 @@
 // Pourquoi ne pas appeler le Space directement depuis le navigateur ?
 //   - le relais evite les problemes de CORS ;
 //   - il permet de garder le Space privé plus tard sans toucher au front ;
-//   - il donne un endroit unique ou brancher un jour une limite de débit.
+//   - il donne un endroit unique ou brancher un jour une limite de débit ;
+//   - il porte le jeton Hugging Face, qui ne doit jamais atteindre le navigateur.
 //
-// Le Space tourne sur CPU gratuit : compter 20 à 40 s par traduction, et
-// jusqu'à 2 min si le Space sortait de veille. Le front doit l'annoncer.
+// Le Space tourne sur ZeroGPU : compter quelques secondes par traduction, et
+// jusqu'à une minute si le Space sortait de veille. Le front doit l'annoncer.
 
 import { Client } from '@gradio/client';
 
@@ -21,7 +22,11 @@ let clientPromise = null;
 function connecter() {
   if (!clientPromise) {
     clientPromise = Client.connect(SPACE, {
-      // renseigner HF_TOKEN dans Vercel seulement si le Space devient privé
+      // HF_TOKEN n'est PAS facultatif depuis la bascule sur ZeroGPU. Le quota
+      // GPU est facturé au compte appelant : sans jeton, l'appel est anonyme et
+      // tous les visiteurs se partagent le petit quota lié à l'IP de Vercel.
+      // Avec le jeton du compte Pro, ils puisent dans le quota Pro.
+      // Un jeton en LECTURE SEULE suffit : le relais ne fait qu'appeler.
       hf_token: process.env.HF_TOKEN || undefined,
     }).catch((err) => {
       clientPromise = null; // ne pas figer un échec de connexion
@@ -65,7 +70,19 @@ export default async function handler(req, res) {
     console.error('Echec de traduction :', err);
     // Le cas le plus frequent : le Space etait en veille et n'a pas repondu
     // dans le temps imparti. Ce n'est pas une erreur du visiteur.
-    const enVeille = /timeout|ECONNRESET|fetch failed|503|502/i.test(String(err?.message));
+    const message = String(err?.message || '');
+    const enVeille = /timeout|ECONNRESET|fetch failed|503|502/i.test(message);
+
+    // ZeroGPU facture le quota a la duree RESERVEE par appel. Quand la reserve
+    // du jour est epuisee, le service repond normalement mais refuse le calcul.
+    // Dire « la traduction a echoue » enverrait chercher une panne inexistante.
+    const quotaEpuise = /quota/i.test(message);
+
+    if (quotaEpuise) {
+      return res.status(429).json({
+        erreur: 'Le quota GPU du jour est épuisé. Le service revient demain.',
+      });
+    }
     return res.status(enVeille ? 503 : 500).json({
       erreur: enVeille
         ? "Le modèle sortait de veille et n'a pas répondu à temps. Réessayez dans une minute."

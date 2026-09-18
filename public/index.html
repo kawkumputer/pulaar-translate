@@ -216,7 +216,8 @@ function demarrerChrono() {
   etat.className = 'etat';
   const rendre = () => {
     const s = Math.round((Date.now() - debut) / 1000);
-    etat.textContent = s < 45
+    // 15 s : sur GPU une traduction prend quelques secondes, au-dela c'est un reveil
+    etat.textContent = s < 15
       ? `${t('etat.encours', langue)} ${s} s`
       : `${t('etat.longue', langue)} ${s} s`;
   };
