@@ -41,9 +41,20 @@
   }
   .page{max-width:900px; margin:0 auto; padding:32px 20px 64px}
   header{margin-bottom:28px}
+  .haut{display:flex; justify-content:space-between; align-items:flex-start;
+        gap:16px; flex-wrap:wrap}
   h1{font-size:1.65rem; margin:0 0 6px; letter-spacing:-.02em}
   .sous{color:var(--doux); margin:0 0 4px}
   .credits{color:var(--doux); font-size:.85rem; margin:10px 0 0}
+  .langues{display:flex; gap:6px; flex-shrink:0}
+  .langues button{
+    font:inherit; font-size:.82rem; font-weight:600; padding:6px 13px;
+    border:1px solid var(--trait); background:transparent; color:var(--doux);
+    border-radius:99px; cursor:pointer;
+  }
+  .langues button[aria-pressed="true"]{
+    background:var(--accent-clair); color:var(--accent); border-color:transparent;
+  }
   .avis{
     background:var(--alerte-fond); color:var(--alerte); border:1px solid currentColor;
     border-radius:10px; padding:11px 14px; font-size:.88rem; margin:18px 0 0;
@@ -58,9 +69,10 @@
     border:1px solid var(--trait); border-radius:9px; padding:11px;
   }
   textarea{min-height:160px; resize:vertical}
-  textarea:focus,select:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:transparent}
+  textarea:focus,select:focus{outline:2px solid var(--accent); outline-offset:1px;
+                              border-color:transparent}
   #sortie{white-space:pre-wrap; min-height:160px; margin:0}
-  #sortie:empty::before{content:"La traduction s’affichera ici."; color:var(--doux)}
+  #sortie.vide{color:var(--doux)}
   .barre{display:flex; gap:10px; align-items:end; margin-top:14px; flex-wrap:wrap}
   .barre > div{flex:1; min-width:180px}
   button{
@@ -81,82 +93,135 @@
 <div class="page">
 
   <header>
-    <h1>Pulaar-Translate — Traducteur Français ↔ Pulaar</h1>
-    <p class="sous">Dialecte Fuuta Tooro · modèle NLLB affiné sur un corpus validé par des locuteurs natifs</p>
-    <p class="credits">
-      Hamath Kane, Abou Sy, Bocar Amadou Ba (ARPRIM) &amp; Alassane Mountaga Sall « Dembel »
-    </p>
-    <p class="avis">
-      ⏳ Le modèle tourne sur un processeur partagé et gratuit :
-      <strong>comptez 20 à 40 secondes</strong> par traduction, et jusqu’à deux minutes
-      pour la toute première si le service sortait de veille. Une seule traduction
-      à la fois.
-    </p>
+    <div class="haut">
+      <div>
+        <h1 data-i18n="titre"></h1>
+        <p class="sous" data-i18n="accroche"></p>
+        <p class="credits">
+          Hamath Kane, Abou Sy, Bocar Amadou Ba (ARPRIM) &amp; Alassane Mountaga Sall « Dembel »
+        </p>
+      </div>
+      <nav class="langues" id="langues"></nav>
+    </div>
+    <p class="avis">⏳ <span data-i18n="avis"></span></p>
   </header>
 
   <main class="grille">
     <section class="carte">
-      <label for="source">Texte source</label>
-      <textarea id="source" maxlength="1000"
-                placeholder="Saisissez le texte à traduire…"></textarea>
+      <label for="source" data-i18n="label.source"></label>
+      <textarea id="source" maxlength="1000"></textarea>
       <p class="compteur"><span id="compteur">0</span> / 1000</p>
       <div class="barre">
         <div>
-          <label for="direction">Direction</label>
+          <label for="direction" data-i18n="label.direction"></label>
           <select id="direction">
-            <option value="fr → pul">Français → Pulaar</option>
-            <option value="pul → fr">Pulaar → Français</option>
+            <option value="fr → pul" data-i18n="dir.fr_pul"></option>
+            <option value="pul → fr" data-i18n="dir.pul_fr"></option>
           </select>
         </div>
-        <button type="button" id="traduire">Traduire</button>
-        <button type="button" id="effacer" class="secondaire">Effacer</button>
+        <button type="button" id="traduire" data-i18n="btn.traduire"></button>
+        <button type="button" id="effacer" class="secondaire" data-i18n="btn.effacer"></button>
       </div>
       <p class="etat" id="etat" role="status" aria-live="polite"></p>
     </section>
 
     <section class="carte">
-      <label for="sortie">Traduction</label>
-      <p id="sortie"></p>
+      <label for="sortie" data-i18n="label.traduction"></label>
+      <p id="sortie" class="vide"></p>
     </section>
   </main>
 
   <footer>
     <p>
-      Projet ouvert autour du pulaar du Fuuta Tooro. Les modèles sont publiés
-      <a href="https://huggingface.co/kawkumputer">sur Hugging Face</a>.
-      Les traductions automatiques comportent des erreurs : faites-les vérifier
-      par un locuteur avant tout usage important.
+      <span data-i18n="pied"></span>
+      <a href="https://huggingface.co/kawkumputer" data-i18n="pied.lien"></a>.
+      <span data-i18n="pied.suite"></span>
     </p>
   </footer>
 
 </div>
 
-<script>
+<script type="module">
+import { LANGUES, t } from './i18n.js';
+
 const $ = (id) => document.getElementById(id);
 const source = $('source'), sortie = $('sortie'), etat = $('etat');
 const btn = $('traduire'), direction = $('direction');
+const barreLangues = $('langues');
 
-$('compteur').textContent = '0';
+// ── Langue de l'interface ─────────────────────────────────────────────────
+// Le choix est mémorisé dans le navigateur. À défaut, on suit la langue du
+// système si elle fait partie des langues proposées, sinon français.
+const CLE = 'pulaar-translate.langue';
+
+function langueInitiale() {
+  try {
+    const gardee = localStorage.getItem(CLE);
+    if (gardee && LANGUES[gardee]) return gardee;
+  } catch (e) { /* navigation privée : localStorage peut lever */ }
+  const nav = (navigator.language || 'fr').slice(0, 2);
+  return LANGUES[nav] ? nav : 'fr';
+}
+
+let langue = langueInitiale();
+
+function appliquerLangue() {
+  document.documentElement.lang = langue;
+  document.title = t('doc.titre', langue);
+  for (const el of document.querySelectorAll('[data-i18n]')) {
+    el.textContent = t(el.dataset.i18n, langue);
+  }
+  source.placeholder = t('placeholder', langue);
+  if (sortie.classList.contains('vide')) {
+    sortie.textContent = t('sortie.vide', langue);
+  }
+  // l'etiquette d'accessibilite du selecteur se traduit elle aussi
+  barreLangues.setAttribute('aria-label', t('label.langue', langue));
+  for (const b of document.querySelectorAll('#langues button')) {
+    b.setAttribute('aria-pressed', String(b.dataset.langue === langue));
+  }
+  try { localStorage.setItem(CLE, langue); } catch (e) { /* ignoré */ }
+}
+
+for (const [code, info] of Object.entries(LANGUES)) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.dataset.langue = code;
+  b.textContent = info.etiquette;
+  b.addEventListener('click', () => { langue = code; appliquerLangue(); });
+  barreLangues.appendChild(b);
+}
+
+// ── Traduction ────────────────────────────────────────────────────────────
 source.addEventListener('input', () => {
   $('compteur').textContent = source.value.length;
 });
 
+function viderSortie() {
+  sortie.classList.add('vide');
+  sortie.textContent = t('sortie.vide', langue);
+}
+
 $('effacer').addEventListener('click', () => {
-  source.value = ''; sortie.textContent = ''; etat.textContent = '';
-  etat.className = 'etat'; $('compteur').textContent = '0'; source.focus();
+  source.value = '';
+  viderSortie();
+  etat.textContent = ''; etat.className = 'etat';
+  $('compteur').textContent = '0';
+  source.focus();
 });
 
 let chrono = null;
 function demarrerChrono() {
   const debut = Date.now();
   etat.className = 'etat';
-  chrono = setInterval(() => {
+  const rendre = () => {
     const s = Math.round((Date.now() - debut) / 1000);
     etat.textContent = s < 45
-      ? `Traduction en cours… ${s} s`
-      : `Toujours en cours… ${s} s — le service sortait sans doute de veille.`;
-  }, 1000);
-  etat.textContent = 'Traduction en cours… 0 s';
+      ? `${t('etat.encours', langue)} ${s} s`
+      : `${t('etat.longue', langue)} ${s} s`;
+  };
+  rendre();
+  chrono = setInterval(rendre, 1000);
 }
 function arreterChrono() { if (chrono) { clearInterval(chrono); chrono = null; } }
 
@@ -164,7 +229,10 @@ async function traduire() {
   const texte = source.value.trim();
   if (!texte) { source.focus(); return; }
 
-  btn.disabled = true; sortie.textContent = ''; demarrerChrono();
+  btn.disabled = true;
+  sortie.classList.remove('vide');
+  sortie.textContent = '';
+  demarrerChrono();
   try {
     const rep = await fetch('/api/translate', {
       method: 'POST',
@@ -174,17 +242,19 @@ async function traduire() {
     const data = await rep.json();
     arreterChrono();
     if (!rep.ok) {
-      etat.textContent = data.erreur || 'Échec de la traduction.';
+      etat.textContent = data.erreur || t('etat.echec', langue);
       etat.className = 'etat erreur';
+      viderSortie();
       return;
     }
     sortie.textContent = data.traduction;
-    etat.textContent = 'Terminé.';
+    etat.textContent = t('etat.termine', langue);
     etat.className = 'etat';
   } catch (err) {
     arreterChrono();
-    etat.textContent = 'Connexion impossible. Vérifiez votre réseau et réessayez.';
+    etat.textContent = t('etat.reseau', langue);
     etat.className = 'etat erreur';
+    viderSortie();
   } finally {
     btn.disabled = false;
   }
@@ -194,6 +264,8 @@ btn.addEventListener('click', traduire);
 source.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') traduire();
 });
+
+appliquerLangue();
 </script>
 </body>
 </html>
