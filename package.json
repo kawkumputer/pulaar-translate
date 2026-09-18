@@ -1,0 +1,13 @@
+{
+  "name": "pulaar-translate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Traducteur public francais <-> pulaar (Fuuta Tooro) — front Vercel sur le Space Hugging Face PulaarAI",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@gradio/client": "^1.7.1"
+  }
+}

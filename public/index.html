@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PulaarAI — Traducteur Français ↔ Pulaar (Fuuta Tooro)</title>
+<meta name="description" content="Traducteur automatique français ↔ pulaar, dialecte Fuuta Tooro. Modèle NLLB affiné sur un corpus validé par des locuteurs natifs. Gratuit.">
+<link rel="canonical" href="https://pulaarai.vercel.app/">
+<meta property="og:title" content="PulaarAI — Traducteur Français ↔ Pulaar">
+<meta property="og:description" content="Traduction automatique français ↔ pulaar, dialecte Fuuta Tooro.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="fr_FR">
+<style>
+  :root{
+    --encre:#141b2d; --doux:#5b6579; --trait:#e2e6ee;
+    --fond:#fbfcfe; --carte:#fff; --accent:#4c58d4; --accent-clair:#eef0ff;
+    --alerte:#9a3d12; --alerte-fond:#fff4ec;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --encre:#e9edf5; --doux:#9aa4b8; --trait:#2a3141;
+      --fond:#0f131c; --carte:#161b27; --accent:#8b95f5; --accent-clair:#1e2235;
+      --alerte:#f0b487; --alerte-fond:#2a1f16;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--fond); color:var(--encre);
+    font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  .page{max-width:900px; margin:0 auto; padding:32px 20px 64px}
+  header{margin-bottom:28px}
+  h1{font-size:1.65rem; margin:0 0 6px; letter-spacing:-.02em}
+  .sous{color:var(--doux); margin:0 0 4px}
+  .credits{color:var(--doux); font-size:.85rem; margin:10px 0 0}
+  .avis{
+    background:var(--alerte-fond); color:var(--alerte); border:1px solid currentColor;
+    border-radius:10px; padding:11px 14px; font-size:.88rem; margin:18px 0 0;
+  }
+  .grille{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:22px}
+  @media (max-width:720px){ .grille{grid-template-columns:1fr} }
+  .carte{background:var(--carte); border:1px solid var(--trait); border-radius:14px; padding:16px}
+  label{display:block; font-size:.78rem; font-weight:600; text-transform:uppercase;
+        letter-spacing:.04em; color:var(--doux); margin-bottom:8px}
+  textarea,select{
+    width:100%; font:inherit; color:inherit; background:transparent;
+    border:1px solid var(--trait); border-radius:9px; padding:11px;
+  }
+  textarea{min-height:160px; resize:vertical}
+  textarea:focus,select:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:transparent}
+  #sortie{white-space:pre-wrap; min-height:160px; margin:0}
+  #sortie:empty::before{content:"La traduction s’affichera ici."; color:var(--doux)}
+  .barre{display:flex; gap:10px; align-items:end; margin-top:14px; flex-wrap:wrap}
+  .barre > div{flex:1; min-width:180px}
+  button{
+    font:inherit; font-weight:600; border:0; border-radius:9px;
+    padding:11px 22px; cursor:pointer; background:var(--accent); color:#fff;
+  }
+  button:disabled{opacity:.55; cursor:progress}
+  button.secondaire{background:var(--accent-clair); color:var(--accent)}
+  .etat{margin-top:12px; font-size:.88rem; color:var(--doux); min-height:1.4em}
+  .etat.erreur{color:var(--alerte)}
+  .compteur{font-size:.78rem; color:var(--doux); text-align:right; margin-top:6px}
+  footer{margin-top:40px; padding-top:20px; border-top:1px solid var(--trait);
+         color:var(--doux); font-size:.85rem}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>PulaarAI — Traducteur Français ↔ Pulaar</h1>
+    <p class="sous">Dialecte Fuuta Tooro · modèle NLLB affiné sur un corpus validé par des locuteurs natifs</p>
+    <p class="credits">
+      Hamath Kane, Abou Sy, Bocar Amadou Ba (ARPRIM) &amp; Alassane Mountaga Sall « Dembel »
+    </p>
+    <p class="avis">
+      ⏳ Le modèle tourne sur un processeur partagé et gratuit :
+      <strong>comptez 20 à 40 secondes</strong> par traduction, et jusqu’à deux minutes
+      pour la toute première si le service sortait de veille. Une seule traduction
+      à la fois.
+    </p>
+  </header>
+
+  <main class="grille">
+    <section class="carte">
+      <label for="source">Texte source</label>
+      <textarea id="source" maxlength="1000"
+                placeholder="Saisissez le texte à traduire…"></textarea>
+      <p class="compteur"><span id="compteur">0</span> / 1000</p>
+      <div class="barre">
+        <div>
+          <label for="direction">Direction</label>
+          <select id="direction">
+            <option value="fr → pul">Français → Pulaar</option>
+            <option value="pul → fr">Pulaar → Français</option>
+          </select>
+        </div>
+        <button type="button" id="traduire">Traduire</button>
+        <button type="button" id="effacer" class="secondaire">Effacer</button>
+      </div>
+      <p class="etat" id="etat" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="carte">
+      <label for="sortie">Traduction</label>
+      <p id="sortie"></p>
+    </section>
+  </main>
+
+  <footer>
+    <p>
+      Projet ouvert autour du pulaar du Fuuta Tooro. Le modèle est
+      <a href="https://huggingface.co/kawkumputer/PulaarAI">consultable sur Hugging Face</a>.
+      Les traductions automatiques comportent des erreurs : faites-les vérifier
+      par un locuteur avant tout usage important.
+    </p>
+  </footer>
+
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const source = $('source'), sortie = $('sortie'), etat = $('etat');
+const btn = $('traduire'), direction = $('direction');
+
+$('compteur').textContent = '0';
+source.addEventListener('input', () => {
+  $('compteur').textContent = source.value.length;
+});
+
+$('effacer').addEventListener('click', () => {
+  source.value = ''; sortie.textContent = ''; etat.textContent = '';
+  etat.className = 'etat'; $('compteur').textContent = '0'; source.focus();
+});
+
+let chrono = null;
+function demarrerChrono() {
+  const debut = Date.now();
+  etat.className = 'etat';
+  chrono = setInterval(() => {
+    const s = Math.round((Date.now() - debut) / 1000);
+    etat.textContent = s < 45
+      ? `Traduction en cours… ${s} s`
+      : `Toujours en cours… ${s} s — le service sortait sans doute de veille.`;
+  }, 1000);
+  etat.textContent = 'Traduction en cours… 0 s';
+}
+function arreterChrono() { if (chrono) { clearInterval(chrono); chrono = null; } }
+
+async function traduire() {
+  const texte = source.value.trim();
+  if (!texte) { source.focus(); return; }
+
+  btn.disabled = true; sortie.textContent = ''; demarrerChrono();
+  try {
+    const rep = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texte, direction: direction.value }),
+    });
+    const data = await rep.json();
+    arreterChrono();
+    if (!rep.ok) {
+      etat.textContent = data.erreur || 'Échec de la traduction.';
+      etat.className = 'etat erreur';
+      return;
+    }
+    sortie.textContent = data.traduction;
+    etat.textContent = 'Terminé.';
+    etat.className = 'etat';
+  } catch (err) {
+    arreterChrono();
+    etat.textContent = 'Connexion impossible. Vérifiez votre réseau et réessayez.';
+    etat.className = 'etat erreur';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+btn.addEventListener('click', traduire);
+source.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') traduire();
+});
+</script>
+</body>
+</html>
