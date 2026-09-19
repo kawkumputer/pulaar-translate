@@ -84,6 +84,30 @@
   .etat{margin-top:12px; font-size:.88rem; color:var(--doux); min-height:1.4em}
   .etat.erreur{color:var(--alerte)}
   .compteur{font-size:.78rem; color:var(--doux); text-align:right; margin-top:6px}
+
+  /* Retours ---------------------------------------------------------------
+     Le bloc vit sous la traduction et n'apparaît qu'une fois qu'il y en a une
+     à juger. Les deux réponses ont le même poids visuel : un « non » plus
+     discret que le « oui » fausserait ce qu'on cherche à mesurer. */
+  .retour{margin-top:18px; padding-top:16px; border-top:1px solid var(--trait)}
+  .retour-q{margin:0 0 10px; font-size:.88rem; font-weight:600}
+  .retour-choix{display:flex; gap:8px; flex-wrap:wrap}
+  .retour-choix button{font-size:.85rem; padding:8px 16px}
+  .retour form{margin-top:16px; display:grid; gap:12px}
+  .retour textarea{min-height:84px}
+  .retour input,.retour select{
+    width:100%; font:inherit; color:inherit; background:transparent;
+    border:1px solid var(--trait); border-radius:9px; padding:10px;
+  }
+  .retour input:focus{outline:2px solid var(--accent); outline-offset:1px;
+                      border-color:transparent}
+  .duo{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media (max-width:520px){ .duo{grid-template-columns:1fr} }
+  .mention{font-size:.78rem; color:var(--doux); margin:0}
+  .retour-etat{font-size:.85rem; margin:10px 0 0; min-height:1.3em; color:var(--doux)}
+  .retour-etat.ok{color:var(--accent)}
+  .retour-etat.erreur{color:var(--alerte)}
+
   footer{margin-top:40px; padding-top:20px; border-top:1px solid var(--trait);
          color:var(--doux); font-size:.85rem}
   a{color:var(--accent)}
@@ -128,6 +152,48 @@
     <section class="carte">
       <label for="sortie" data-i18n="label.traduction"></label>
       <p id="sortie" class="vide"></p>
+
+      <div class="retour" id="retour" hidden>
+        <p class="retour-q" data-i18n="retour.question"></p>
+        <div class="retour-choix">
+          <button type="button" class="secondaire" id="retour-oui"
+                  data-i18n="retour.oui"></button>
+          <button type="button" class="secondaire" id="retour-non"
+                  data-i18n="retour.non"></button>
+        </div>
+
+        <form id="retour-form" hidden>
+          <div>
+            <label for="retour-correction" data-i18n="retour.correction"></label>
+            <textarea id="retour-correction" maxlength="2000"></textarea>
+          </div>
+          <div class="duo">
+            <div>
+              <label for="retour-parler" data-i18n="retour.parler"></label>
+              <!-- Une liste fermée plutôt qu'un champ libre : le modèle vise le
+                   Fuuta Tooro, et sans cette information une correction d'un
+                   autre parler serait comptée comme une erreur du modèle. -->
+              <select id="retour-parler">
+                <option value="">—</option>
+                <option value="Fuuta Tooro">Fuuta Tooro</option>
+                <option value="Fuuta Jaloo">Fuuta Jaloo</option>
+                <option value="Maasina">Maasina</option>
+                <option value="Adamawa">Adamawa</option>
+                <option value="Sokoto">Sokoto</option>
+                <option value="inconnu" data-i18n="retour.parler.nsp"></option>
+              </select>
+            </div>
+            <div>
+              <label for="retour-nom" data-i18n="retour.nom"></label>
+              <input id="retour-nom" maxlength="80" autocomplete="off">
+            </div>
+          </div>
+          <p class="mention" data-i18n="retour.avis"></p>
+          <div><button type="submit" data-i18n="retour.envoyer"></button></div>
+        </form>
+
+        <p class="retour-etat" id="retour-etat" role="status" aria-live="polite"></p>
+      </div>
     </section>
   </main>
 
@@ -148,6 +214,7 @@ const $ = (id) => document.getElementById(id);
 const source = $('source'), sortie = $('sortie'), etat = $('etat');
 const btn = $('traduire'), direction = $('direction');
 const barreLangues = $('langues');
+const retour = $('retour'), retourForm = $('retour-form'), retourEtat = $('retour-etat');
 
 // ── Langue de l'interface ─────────────────────────────────────────────────
 // Le choix est mémorisé dans le navigateur. À défaut, on suit la langue du
@@ -172,6 +239,7 @@ function appliquerLangue() {
     el.textContent = t(el.dataset.i18n, langue);
   }
   source.placeholder = t('placeholder', langue);
+  $('retour-correction').placeholder = t('retour.exemple', langue);
   if (sortie.classList.contains('vide')) {
     sortie.textContent = t('sortie.vide', langue);
   }
@@ -207,7 +275,77 @@ $('effacer').addEventListener('click', () => {
   viderSortie();
   etat.textContent = ''; etat.className = 'etat';
   $('compteur').textContent = '0';
+  masquerRetour();
   source.focus();
+});
+
+// ── Retours des visiteurs ─────────────────────────────────────────────────
+// `juge` fige le couple réellement affiché au moment de la traduction. Sans
+// lui, un visiteur qui modifie le texte source avant de cliquer « Non »
+// enverrait une correction portant sur une phrase que le modèle n'a jamais vue.
+let juge = null;
+
+function masquerRetour() {
+  juge = null;
+  retour.hidden = true;
+  retourForm.hidden = true;
+  retourEtat.textContent = '';
+  retourEtat.className = 'retour-etat';
+  $('retour-correction').value = '';
+  for (const b of retour.querySelectorAll('.retour-choix button')) b.disabled = false;
+}
+
+async function envoyerRetour(verdict, correction) {
+  if (!juge) return;
+  retourEtat.textContent = '';
+  retourEtat.className = 'retour-etat';
+  try {
+    const rep = await fetch('/api/retour', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        texte_source: juge.texte,
+        direction: juge.direction,
+        traduction_modele: juge.traduction,
+        verdict,
+        correction: correction || null,
+        dialecte: $('retour-parler').value || null,
+        contributeur: $('retour-nom').value.trim() || null,
+      }),
+    });
+    const data = await rep.json().catch(() => ({}));
+    if (!rep.ok) {
+      retourEtat.textContent = data.erreur || t('retour.echec', langue);
+      retourEtat.className = 'retour-etat erreur';
+      return;
+    }
+    retourEtat.textContent = t('retour.merci', langue);
+    retourEtat.className = 'retour-etat ok';
+    retourForm.hidden = true;
+    for (const b of retour.querySelectorAll('.retour-choix button')) b.disabled = true;
+  } catch (err) {
+    retourEtat.textContent = t('etat.reseau', langue);
+    retourEtat.className = 'retour-etat erreur';
+  }
+}
+
+$('retour-oui').addEventListener('click', () => envoyerRetour('bonne', null));
+$('retour-non').addEventListener('click', () => {
+  retourForm.hidden = false;
+  retourEtat.textContent = '';
+  retourEtat.className = 'retour-etat';
+  $('retour-correction').focus();
+});
+retourForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const propose = $('retour-correction').value.trim();
+  if (!propose) {
+    retourEtat.textContent = t('retour.vide', langue);
+    retourEtat.className = 'retour-etat erreur';
+    $('retour-correction').focus();
+    return;
+  }
+  envoyerRetour('mauvaise', propose);
 });
 
 let chrono = null;
@@ -233,6 +371,7 @@ async function traduire() {
   btn.disabled = true;
   sortie.classList.remove('vide');
   sortie.textContent = '';
+  masquerRetour();
   demarrerChrono();
   try {
     const rep = await fetch('/api/translate', {
@@ -251,6 +390,8 @@ async function traduire() {
     sortie.textContent = data.traduction;
     etat.textContent = t('etat.termine', langue);
     etat.className = 'etat';
+    juge = { texte, direction: direction.value, traduction: data.traduction };
+    retour.hidden = false;
   } catch (err) {
     arreterChrono();
     etat.textContent = t('etat.reseau', langue);

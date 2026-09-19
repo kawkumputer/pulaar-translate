@@ -7,6 +7,10 @@
   "engines": {
     "node": ">=18"
   },
+  "scripts": {
+    "test": "node tools/test-routes.mjs",
+    "i18n": "node tools/i18n-manquants.mjs"
+  },
   "dependencies": {
     "@gradio/client": "^1.7.1"
   }

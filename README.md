@@ -7,6 +7,8 @@ Page unique déployée sur Vercel, qui appelle le Space Hugging Face
 
 ```
 navigateur  →  Vercel /api/translate  →  Space HF Gradio  →  modèle LoRA
+            →  Vercel /api/retour     →  Supabase (table retours)
+            →  Vercel /api/admin      →  Supabase (dépouillement, export)
 ```
 
 ## Pourquoi une page HTML et pas Flutter
@@ -25,9 +27,10 @@ l'app. Un backend, deux façades.
 La page n'appelle pas le Space directement :
 
 - pas de problème de CORS ;
-- le Space peut passer en privé plus tard sans toucher au front (il suffira de
-  renseigner `HF_TOKEN` dans Vercel) ;
-- un endroit unique où brancher une limite de débit le jour où c'est utile.
+- il porte les secrets — jeton Hugging Face et clé Supabase — qui ne doivent
+  jamais atteindre le navigateur ;
+- le Space peut passer en privé plus tard sans toucher au front ;
+- un endroit unique où brancher la limite de débit.
 
 ## Déployer
 
@@ -37,12 +40,29 @@ npx vercel          # aperçu
 npx vercel --prod   # production
 ```
 
-Aucune variable d'environnement n'est nécessaire tant que le Space est public.
-
 | Variable | Rôle |
 |---|---|
 | `HF_SPACE` | Space à appeler. Défaut : `kawkumputer/PulaarAI` |
-| `HF_TOKEN` | Uniquement si le Space devient privé |
+| `HF_TOKEN` | **Obligatoire.** Lecture seule. Voir ci-dessous |
+| `SUPABASE_URL` | `https://xxxx.supabase.co` — Settings → API |
+| `SUPABASE_SERVICE_KEY` | Clé `service_role`. **Jamais la clé `anon`** |
+| `ADMIN_MOT_DE_PASSE` | Accès à `/admin.html`. Sans elle, la page reste fermée |
+| `HACHAGE_SEL` | Chaîne aléatoire quelconque, pour saler l'empreinte des IP |
+| `MODELE_VERSION` | Version jugée par les retours. Défaut : `v11` |
+
+Toutes sont à créer en type **Secret**, pour les environnements *Production*
+**et** *Preview* — sinon un déploiement d'aperçu part sans jeton. Une variable
+n'est prise en compte qu'au build suivant : après l'avoir ajoutée, il faut
+redéployer.
+
+### Pourquoi `HF_TOKEN` n'est pas facultatif
+
+Depuis la bascule du Space sur **ZeroGPU**, le quota GPU est facturé au compte
+appelant. Sans jeton, l'appel part en anonyme et **tous les visiteurs se
+partagent le petit quota attaché à l'IP de sortie de Vercel** : le service
+tombe après quelques traductions. Avec le jeton du compte Pro, ils puisent
+dans le quota Pro. Un jeton en lecture seule suffit, le relais ne fait
+qu'appeler.
 
 ## Ce qu'il faut vérifier au premier déploiement
 
@@ -64,27 +84,78 @@ node -e "import('@gradio/client').then(async ({Client}) => {
 La sortie doit lister un endpoint nommé `/translate` prenant deux entrées
 (le texte, la direction).
 
-## Limites connues, assumées
+## Retours des visiteurs
 
-Elles viennent toutes du Space gratuit en CPU, pas de Vercel :
+Sous chaque traduction, le visiteur répond « cette traduction est-elle
+correcte ? ». Un « non » ouvre un champ de correction, plus deux champs
+facultatifs : son parler et son nom.
+
+**Mise en service** : exécuter [`supabase/schema.sql`](supabase/schema.sql)
+une fois dans Supabase (SQL Editor → New query → coller → Run), puis
+renseigner les quatre variables Supabase ci-dessus.
+
+### Ce que la table capture, et pourquoi
+
+| Colonne | Pourquoi elle existe |
+|---|---|
+| `modele` | Dans six mois, un retour sans version du modèle n'est plus interprétable |
+| `dialecte` | Le modèle vise le Fuuta Tooro : une correction juste en Maasina y serait fausse |
+| `statut` | Rien ne part à l'entraînement sans être passé à `valide` à la main |
+| `ip_hachee` | Empreinte salée, jamais l'adresse — limitation de débit uniquement |
+
+### La règle qui compte
+
+**Une correction venue du web est un candidat, pas une donnée.** Les 8 080
+paires du dataset valent quelque chose parce qu'elles sont validées ; un
+versement automatique les dévaluerait toutes d'un coup, sans qu'on sache
+ensuite lesquelles sont sûres. D'où le `statut`, la page de dépouillement, et
+un export qui ne sort que les retours validés.
+
+### Dépouiller
+
+`/admin.html`, protégée par `ADMIN_MOT_DE_PASSE`. Chaque retour s'y valide ou
+s'y rejette, avec un aperçu de la paire `{fr, pul}` telle qu'elle entrerait
+dans le dataset. Le bouton d'export produit un JSONL au schéma
+`{fr, pul, source}` du corpus d'entraînement, `source` valant `retour_public`.
+
+Les retours jugés « bonne » sont exportés eux aussi : ils confirment une sortie
+du modèle, ce qui est de la donnée valide. Un « mauvaise » sans correction ne
+l'est pas — il signale un trou, il ne le comble pas.
+
+## Sécurité
+
+- La clé `service_role` contourne RLS. Elle ne vit que dans les variables
+  Vercel, n'est lue que par `api/_supabase.js`, et ce fichier n'est jamais
+  importé par le front.
+- La table a **RLS activé sans aucune policy** : les rôles `anon` et
+  `authenticated` n'ont aucun droit, même si leur clé fuitait. Ne pas ajouter
+  de policy.
+- `/admin.html` n'affiche jamais de HTML fourni par un visiteur : tout passe
+  par `textContent`. Un nom de contributeur contenant un script s'exécuterait
+  sinon dans la session de l'administrateur.
+- Les IP ne sont pas stockées, seulement une empreinte salée tronquée.
+
+## Limites connues, assumées
 
 | | |
 |---|---|
-| 20 à 40 s par traduction | inférence CPU sur un modèle de 1,3 milliard de paramètres |
-| jusqu'à 2 min au réveil | un Space gratuit s'endort après ~48 h sans trafic |
-| une requête à la fois | pas de parallélisme sur un Space gratuit |
+| quelques secondes par traduction | ZeroGPU, GPU partagé |
+| jusqu'à une minute au réveil | le Space s'endort et doit recharger le modèle |
+| quota GPU journalier | réserve de 30 s par appel ; épuisée, le site répond 429 |
 
 La page annonce ces délais et affiche un chronomètre, pour qu'un visiteur ne
 croie pas que le service est cassé.
 
-Pour passer sous les 2 secondes, la piste est **ZeroGPU** (compte Hugging Face
-Pro) : c'est un changement de configuration du Space, ce projet n'a pas à
-bouger.
-
 ## Structure
 
 ```
-api/translate.js   relais serverless vers le Space
-public/index.html  la page (aucune dépendance côté navigateur)
-vercel.json        maxDuration 120 s — sinon Vercel coupe avant le Space
+api/translate.js    relais serverless vers le Space
+api/retour.js       enregistrement d'un retour visiteur
+api/admin.js        dépouillement et export, derrière mot de passe
+api/_supabase.js    accès Supabase — le « _ » l'exclut du routage Vercel
+public/index.html   la page (aucune dépendance côté navigateur)
+public/admin.html   page de dépouillement, noindex
+public/i18n.js      libellés français et pulaar
+supabase/schema.sql à exécuter une fois dans Supabase
+vercel.json         maxDuration 120 s — sinon Vercel coupe avant le Space
 ```

@@ -39,6 +39,22 @@ export const TEXTES = {
     'pied':             'Projet ouvert autour du pulaar du Fuuta Tooro. Les modèles sont publiés',
     'pied.lien':        'sur Hugging Face',
     'pied.suite':       'Les traductions automatiques comportent des erreurs : faites-les vérifier par un locuteur avant tout usage important.',
+
+    // Retours des visiteurs. Ce sont eux qui disent au modèle où il se trompe :
+    // le « non » doit être aussi facile à donner que le « oui ».
+    'retour.question':  'Cette traduction est-elle correcte ?',
+    'retour.oui':       'Oui',
+    'retour.non':       'Non, je propose mieux',
+    'retour.correction': 'La bonne traduction',
+    'retour.exemple':   'Écrivez ici la traduction juste…',
+    'retour.parler':    'Votre parler (facultatif)',
+    'retour.parler.nsp': 'Je ne sais pas',
+    'retour.nom':       'Votre nom (facultatif)',
+    'retour.envoyer':   'Envoyer',
+    'retour.avis':      'Votre contribution pourra servir à améliorer le modèle. N’y mettez pas d’information personnelle.',
+    'retour.merci':     'Merci, c’est enregistré.',
+    'retour.vide':      'Indiquez la bonne traduction avant d’envoyer.',
+    'retour.echec':     'L’envoi a échoué. Réessayez.',
   },
 
   pul: {
@@ -64,6 +80,24 @@ export const TEXTES = {
     'pied':             '',
     'pied.lien':        '',
     'pied.suite':       '',
+
+    // « Oui » et « non » ne figurent pas dans les 8 080 paires validées, et
+    // « merci » y apparaît sous cinq formes concurrentes. Rien n'est rempli
+    // ici tant que ce n'est pas arbitré : le repli sur le français vaut mieux
+    // qu'un pulaar inventé.
+    'retour.question':  '',
+    'retour.oui':       '',
+    'retour.non':       '',
+    'retour.correction': '',
+    'retour.exemple':   '',
+    'retour.parler':    '',
+    'retour.parler.nsp': '',
+    'retour.nom':       '',
+    'retour.envoyer':   '',
+    'retour.avis':      '',
+    'retour.merci':     '',
+    'retour.vide':      '',
+    'retour.echec':     '',
   },
 };
 

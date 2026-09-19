@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Page privée : pas d'indexation, pas d'aperçu, pas de référent sortant. -->
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Retours — Pulaar-Translate</title>
+<style>
+  :root{
+    --encre:#141b2d; --doux:#5b6579; --trait:#e2e6ee;
+    --fond:#fbfcfe; --carte:#fff; --accent:#4c58d4; --accent-clair:#eef0ff;
+    --alerte:#9a3d12; --alerte-fond:#fff4ec; --bon:#1d6b45; --bon-clair:#e8f5ee;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --encre:#e9edf5; --doux:#9aa4b8; --trait:#2a3141;
+      --fond:#0f131c; --carte:#161b27; --accent:#8b95f5; --accent-clair:#1e2235;
+      --alerte:#f0b487; --alerte-fond:#2a1f16; --bon:#7fd1a5; --bon-clair:#15291f;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--fond); color:var(--encre);
+       font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .page{max-width:1000px; margin:0 auto; padding:32px 20px 64px}
+  h1{font-size:1.4rem; margin:0 0 4px; letter-spacing:-.02em}
+  .sous{color:var(--doux); margin:0 0 22px; font-size:.9rem}
+  .carte{background:var(--carte); border:1px solid var(--trait);
+         border-radius:14px; padding:16px; margin-bottom:14px}
+  label{display:block; font-size:.78rem; font-weight:600; text-transform:uppercase;
+        letter-spacing:.04em; color:var(--doux); margin-bottom:8px}
+  input,select,textarea{width:100%; font:inherit; color:inherit; background:transparent;
+        border:1px solid var(--trait); border-radius:9px; padding:10px}
+  button{font:inherit; font-weight:600; border:0; border-radius:9px;
+         padding:9px 18px; cursor:pointer; background:var(--accent); color:#fff}
+  button.secondaire{background:var(--accent-clair); color:var(--accent)}
+  button:disabled{opacity:.5; cursor:not-allowed}
+  .rangee{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .compteurs{display:flex; gap:8px; flex-wrap:wrap; margin:0 0 16px}
+  .jeton{font-size:.8rem; padding:5px 12px; border-radius:99px;
+         background:var(--accent-clair); color:var(--accent); font-weight:600}
+  .vide{color:var(--doux); text-align:center; padding:34px 0}
+  .etiq{font-size:.72rem; font-weight:700; text-transform:uppercase;
+        letter-spacing:.05em; padding:3px 9px; border-radius:99px}
+  .etiq.bonne{background:var(--bon-clair); color:var(--bon)}
+  .etiq.mauvaise{background:var(--alerte-fond); color:var(--alerte)}
+  .etiq.valide{background:var(--bon-clair); color:var(--bon)}
+  .etiq.rejete{background:var(--trait); color:var(--doux)}
+  .meta{font-size:.78rem; color:var(--doux); display:flex; gap:10px;
+        flex-wrap:wrap; align-items:center; margin-bottom:10px}
+  .paire{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px}
+  @media (max-width:640px){ .paire{grid-template-columns:1fr} }
+  .bloc{border:1px solid var(--trait); border-radius:10px; padding:10px 12px}
+  .bloc h3{margin:0 0 4px; font-size:.7rem; text-transform:uppercase;
+           letter-spacing:.05em; color:var(--doux); font-weight:700}
+  .bloc p{margin:0; white-space:pre-wrap; word-break:break-word}
+  .bloc.propose{border-color:var(--accent)}
+  .etat{font-size:.86rem; color:var(--doux); min-height:1.3em; margin:10px 0 0}
+  .etat.erreur{color:var(--alerte)}
+  [hidden]{display:none !important}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Retours des visiteurs</h1>
+  <p class="sous">
+    Rien ne part à l’entraînement sans passer par ici. Une correction venue du
+    web est un candidat, pas une donnée : elle se juge comme une proposition
+    d’un collaborateur, dialecte et orthographe compris.
+  </p>
+
+  <!-- Connexion ---------------------------------------------------------- -->
+  <form class="carte" id="connexion">
+    <label for="mdp">Mot de passe</label>
+    <div class="rangee">
+      <input type="password" id="mdp" autocomplete="current-password"
+             style="flex:1; min-width:200px">
+      <button type="submit">Entrer</button>
+    </div>
+    <p class="etat" id="etat-connexion"></p>
+  </form>
+
+  <!-- Dépouillement ------------------------------------------------------ -->
+  <div id="console" hidden>
+    <div class="carte">
+      <div class="rangee">
+        <div style="flex:1; min-width:170px">
+          <label for="filtre">Afficher</label>
+          <select id="filtre">
+            <option value="nouveau">À dépouiller</option>
+            <option value="valide">Validés</option>
+            <option value="rejete">Rejetés</option>
+            <option value="">Tous</option>
+          </select>
+        </div>
+        <button type="button" class="secondaire" id="recharger">Recharger</button>
+        <button type="button" id="exporter">Exporter les validés (JSONL)</button>
+      </div>
+      <p class="etat" id="etat-console"></p>
+    </div>
+
+    <div class="compteurs" id="compteurs"></div>
+    <div id="liste"></div>
+  </div>
+
+</div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const CLE = 'pulaar-translate.admin';
+
+// Le mot de passe vit en sessionStorage : il disparaît à la fermeture de
+// l'onglet. localStorage le garderait indéfiniment sur la machine.
+let mdp = '';
+try { mdp = sessionStorage.getItem(CLE) || ''; } catch (e) { /* ignoré */ }
+
+function appeler(chemin, options = {}) {
+  return fetch(chemin, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', 'x-admin-mdp': mdp, ...options.headers },
+  });
+}
+
+function dire(ou, message, erreur = false) {
+  const el = $(ou);
+  el.textContent = message;
+  el.className = erreur ? 'etat erreur' : 'etat';
+}
+
+const dateFr = (iso) => new Date(iso).toLocaleString('fr-FR',
+  { dateStyle: 'short', timeStyle: 'short' });
+
+// ── Rendu d'un retour ───────────────────────────────────────────────────────
+function carte(r) {
+  const el = document.createElement('div');
+  el.className = 'carte';
+
+  const versPulaar = r.direction === 'fr → pul';
+  const propose = r.verdict === 'bonne' ? r.traduction_modele : r.correction;
+
+  // Tout passe par textContent, jamais par innerHTML : `contributeur` et
+  // `dialecte` sont saisis par un visiteur. Une page d'administration qui
+  // interpole du HTML fourni par l'utilisateur offre à n'importe qui un script
+  // exécuté dans la session de l'administrateur.
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  const jeton = (texte, classe) => {
+    const s = document.createElement('span');
+    if (classe) s.className = classe;
+    s.textContent = texte;
+    return s;
+  };
+  meta.appendChild(jeton(r.verdict, `etiq ${r.verdict === 'bonne' ? 'bonne' : 'mauvaise'}`));
+  if (r.statut !== 'nouveau') {
+    meta.appendChild(jeton(r.statut, `etiq ${r.statut === 'valide' ? 'valide' : 'rejete'}`));
+  }
+  meta.appendChild(jeton(dateFr(r.cree_le)));
+  meta.appendChild(jeton(r.direction));
+  meta.appendChild(jeton(`modèle ${r.modele}`));
+  if (r.dialecte) meta.appendChild(jeton(`parler : ${r.dialecte}`));
+  if (r.contributeur) meta.appendChild(jeton(`par ${r.contributeur}`));
+  el.appendChild(meta);
+
+  const paire = document.createElement('div');
+  paire.className = 'paire';
+  paire.appendChild(bloc('Texte source', r.texte_source));
+  paire.appendChild(bloc('Sortie du modèle', r.traduction_modele));
+  el.appendChild(paire);
+
+  if (r.verdict === 'mauvaise') {
+    el.appendChild(bloc(
+      r.correction ? 'Correction proposée' : 'Signalé faux, sans correction',
+      r.correction || '—', Boolean(r.correction)));
+  }
+
+  // Ce qui partirait dans le dataset si ce retour était validé. L'afficher
+  // évite de valider en imaginant le résultat.
+  if (propose) {
+    const apercu = document.createElement('p');
+    apercu.className = 'meta';
+    apercu.style.marginTop = '10px';
+    const fr = versPulaar ? r.texte_source : propose;
+    const pul = versPulaar ? propose : r.texte_source;
+    apercu.textContent = `→ dataset : {"fr": ${JSON.stringify(fr)}, "pul": ${JSON.stringify(pul)}}`;
+    el.appendChild(apercu);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'rangee';
+  actions.style.marginTop = '12px';
+  if (r.statut !== 'valide' && propose) {
+    actions.appendChild(bouton('Valider', () => changer(r.id, 'valide')));
+  }
+  if (r.statut !== 'rejete') {
+    actions.appendChild(bouton('Rejeter', () => changer(r.id, 'rejete'), true));
+  }
+  if (r.statut !== 'nouveau') {
+    actions.appendChild(bouton('Remettre à dépouiller',
+      () => changer(r.id, 'nouveau'), true));
+  }
+  el.appendChild(actions);
+  return el;
+}
+
+function bloc(titre, contenu, accent = false) {
+  const d = document.createElement('div');
+  d.className = accent ? 'bloc propose' : 'bloc';
+  const h = document.createElement('h3'); h.textContent = titre;
+  const p = document.createElement('p'); p.textContent = contenu;
+  d.append(h, p);
+  return d;
+}
+
+function bouton(libelle, action, secondaire = false) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = libelle;
+  if (secondaire) b.className = 'secondaire';
+  b.addEventListener('click', action);
+  return b;
+}
+
+// ── Chargement et actions ───────────────────────────────────────────────────
+async function charger() {
+  dire('etat-console', 'Chargement…');
+  const statut = $('filtre').value;
+  try {
+    const rep = await appeler(`/api/admin${statut ? `?statut=${statut}` : ''}`);
+    if (rep.status === 401) return deconnecter();
+    const data = await rep.json();
+    if (!rep.ok) return dire('etat-console', data.erreur || 'Échec.', true);
+
+    const c = data.compteurs;
+    $('compteurs').innerHTML = [
+      `${data.total} au total`, `${c.nouveau} à dépouiller`,
+      `${c.valide} validés`, `${c.rejete} rejetés`,
+      `${c.bonne} 👍`, `${c.mauvaise} 👎`,
+    ].map((x) => `<span class="jeton">${x}</span>`).join('');
+
+    const liste = $('liste');
+    liste.textContent = '';
+    if (!data.retours.length) {
+      liste.innerHTML = '<p class="vide">Aucun retour ici.</p>';
+    } else {
+      for (const r of data.retours) liste.appendChild(carte(r));
+    }
+    dire('etat-console', `${data.retours.length} affiché(s).`);
+  } catch (err) {
+    dire('etat-console', 'Connexion impossible.', true);
+  }
+}
+
+async function changer(id, statut) {
+  try {
+    const rep = await appeler('/api/admin', {
+      method: 'PATCH',
+      body: JSON.stringify({ id, statut }),
+    });
+    if (rep.status === 401) return deconnecter();
+    if (!rep.ok) {
+      const data = await rep.json().catch(() => ({}));
+      return dire('etat-console', data.erreur || 'Échec.', true);
+    }
+    charger();
+  } catch (err) {
+    dire('etat-console', 'Connexion impossible.', true);
+  }
+}
+
+// L'export passe par fetch et non par un lien : le mot de passe voyage en
+// en-tête, et un <a href> ne peut pas en porter.
+$('exporter').addEventListener('click', async () => {
+  dire('etat-console', 'Export en cours…');
+  try {
+    const rep = await appeler('/api/admin?format=jsonl');
+    if (rep.status === 401) return deconnecter();
+    if (!rep.ok) return dire('etat-console', 'Échec de l’export.', true);
+    const blob = await rep.blob();
+    if (!blob.size) return dire('etat-console', 'Aucun retour validé à exporter.', true);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'retours_valides.jsonl';
+    a.click();
+    URL.revokeObjectURL(url);
+    dire('etat-console', 'Export téléchargé.');
+  } catch (err) {
+    dire('etat-console', 'Connexion impossible.', true);
+  }
+});
+
+$('recharger').addEventListener('click', charger);
+$('filtre').addEventListener('change', charger);
+
+// ── Connexion ───────────────────────────────────────────────────────────────
+function deconnecter() {
+  mdp = '';
+  try { sessionStorage.removeItem(CLE); } catch (e) { /* ignoré */ }
+  $('console').hidden = true;
+  $('connexion').hidden = false;
+  dire('etat-connexion', 'Mot de passe incorrect.', true);
+}
+
+async function entrer(candidat) {
+  mdp = candidat;
+  const rep = await appeler('/api/admin?statut=nouveau').catch(() => null);
+  if (!rep) return dire('etat-connexion', 'Connexion impossible.', true);
+  if (rep.status === 401) return deconnecter();
+  try { sessionStorage.setItem(CLE, mdp); } catch (e) { /* ignoré */ }
+  $('connexion').hidden = true;
+  $('console').hidden = false;
+  charger();
+}
+
+$('connexion').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const valeur = $('mdp').value;
+  if (!valeur) return;
+  $('mdp').value = '';
+  dire('etat-connexion', 'Vérification…');
+  entrer(valeur);
+});
+
+// Session déjà ouverte dans cet onglet : on reprend sans redemander.
+if (mdp) entrer(mdp);
+</script>
+</body>
+</html>
