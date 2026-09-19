@@ -119,63 +119,63 @@
   <header>
     <div class="haut">
       <div>
-        <h1 data-i18n="titre"></h1>
-        <p class="sous" data-i18n="accroche"></p>
+        <h1 data-i18n="titre">Pulaar-Translate — Traducteur Français ↔ Pulaar</h1>
+        <p class="sous" data-i18n="accroche">Dialecte Fuuta Tooro · modèle NLLB affiné sur un corpus validé par des locuteurs natifs</p>
         <p class="credits">
           Hamath Kane, Abou Sy, Bocar Amadou Ba (ARPRIM) &amp; Alassane Mountaga Sall « Dembel »
         </p>
       </div>
       <nav class="langues" id="langues"></nav>
     </div>
-    <p class="avis">⏳ <span data-i18n="avis"></span></p>
+    <p class="avis">⏳ <span data-i18n="avis">Le modèle tourne sur un GPU partagé : comptez moins de deux secondes par traduction. La première après une période creuse peut demander jusqu’à une minute, le temps que le service sorte de veille.</span></p>
   </header>
 
   <main class="grille">
     <section class="carte">
-      <label for="source" data-i18n="label.source"></label>
-      <textarea id="source" maxlength="1000"></textarea>
+      <label for="source" data-i18n="label.source">Texte source</label>
+      <textarea id="source" maxlength="1000" placeholder="Saisissez le texte à traduire…"></textarea>
       <p class="compteur"><span id="compteur">0</span> / 1000</p>
       <div class="barre">
         <div>
-          <label for="direction" data-i18n="label.direction"></label>
+          <label for="direction" data-i18n="label.direction">Direction</label>
           <select id="direction">
-            <option value="fr → pul" data-i18n="dir.fr_pul"></option>
-            <option value="pul → fr" data-i18n="dir.pul_fr"></option>
+            <option value="fr → pul" data-i18n="dir.fr_pul">Français → Pulaar</option>
+            <option value="pul → fr" data-i18n="dir.pul_fr">Pulaar → Français</option>
           </select>
         </div>
-        <button type="button" id="traduire" data-i18n="btn.traduire"></button>
-        <button type="button" id="effacer" class="secondaire" data-i18n="btn.effacer"></button>
+        <button type="button" id="traduire" data-i18n="btn.traduire">Traduire</button>
+        <button type="button" id="effacer" class="secondaire" data-i18n="btn.effacer">Effacer</button>
       </div>
       <p class="etat" id="etat" role="status" aria-live="polite"></p>
     </section>
 
     <section class="carte">
-      <label for="sortie" data-i18n="label.traduction"></label>
-      <p id="sortie" class="vide"></p>
+      <label for="sortie" data-i18n="label.traduction">Traduction</label>
+      <p id="sortie" class="vide">La traduction s’affichera ici.</p>
 
       <div class="retour" id="retour" hidden>
-        <p class="retour-q" data-i18n="retour.question"></p>
+        <p class="retour-q" data-i18n="retour.question">Cette traduction est-elle correcte ?</p>
         <div class="retour-choix">
           <button type="button" class="secondaire" id="retour-oui"
-                  data-i18n="retour.oui"></button>
+                  data-i18n="retour.oui">Oui</button>
           <button type="button" class="secondaire" id="retour-non"
-                  data-i18n="retour.non"></button>
+                  data-i18n="retour.non">Non, je propose mieux</button>
         </div>
 
         <form id="retour-form" hidden>
           <div>
-            <label for="retour-correction" data-i18n="retour.correction"></label>
-            <textarea id="retour-correction" maxlength="2000"></textarea>
+            <label for="retour-correction" data-i18n="retour.correction">La bonne traduction</label>
+            <textarea id="retour-correction" maxlength="2000" placeholder="Écrivez ici la traduction juste…"></textarea>
           </div>
           <div>
-            <label for="retour-nom" data-i18n="retour.nom"></label>
+            <label for="retour-nom" data-i18n="retour.nom">Votre nom (facultatif)</label>
             <input id="retour-nom" maxlength="80" autocomplete="off">
           </div>
           <p class="mention">
-            <span data-i18n="retour.fuuta"></span>
-            <span data-i18n="retour.avis"></span>
+            <span data-i18n="retour.fuuta">Le modèle apprend le pulaar du Fuuta Tooro.</span>
+            <span data-i18n="retour.avis">Votre contribution pourra servir à améliorer le modèle. N’y mettez pas d’information personnelle.</span>
           </p>
-          <div><button type="submit" data-i18n="retour.envoyer"></button></div>
+          <div><button type="submit" data-i18n="retour.envoyer">Envoyer</button></div>
         </form>
 
         <p class="retour-etat" id="retour-etat" role="status" aria-live="polite"></p>
@@ -185,12 +185,12 @@
 
   <footer>
     <p>
-      <span data-i18n="pied"></span>
-      <a href="https://huggingface.co/kawkumputer" data-i18n="pied.lien"></a>.
-      <span data-i18n="pied.suite"></span>
+      <span data-i18n="pied">Projet ouvert autour du pulaar du Fuuta Tooro. Les modèles sont publiés</span>
+      <a href="https://huggingface.co/kawkumputer" data-i18n="pied.lien">sur Hugging Face</a>.
+      <span data-i18n="pied.suite">Les traductions automatiques comportent des erreurs : faites-les vérifier par un locuteur avant tout usage important.</span>
     </p>
     <p>
-      <span data-i18n="pied.contact"></span>
+      <span data-i18n="pied.contact">Une question, une remarque, envie de contribuer ?</span>
       <a href="mailto:pulaartranslate@gmail.com">pulaartranslate@gmail.com</a>
     </p>
   </footer>

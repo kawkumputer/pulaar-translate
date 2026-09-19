@@ -161,6 +161,27 @@ Pour déménager : changer `CANONIQUE` dans
 [`tools/verif-domaine.mjs`](tools/verif-domaine.mjs), lancer `npm run domaine`,
 et corriger ce qu'il signale.
 
+## Texte lisible sans JavaScript
+
+Les libellés vivent dans `i18n.js` et sont injectés au chargement. Un robot qui
+n'exécute pas JavaScript ne voyait donc qu'un **`<h1>` vide** et 125 caractères
+de contenu. Google sait rendre le JavaScript — la page a bien été indexée —
+mais c'est une seconde passe moins prioritaire, et Bing, les robots sociaux et
+les crawlers d'IA ne le font souvent pas.
+
+Le français est donc écrit **en dur** dans `index.html`, ce qui ne coûte rien :
+c'est déjà la seule langue affichée tant que `PULAAR_PRET` vaut `false`, et
+`appliquerLangue()` réécrit de toute façon le même texte. Résultat : 1 089
+caractères indexables au lieu de 125.
+
+```bash
+npm run prerendre     # réécrit index.html depuis i18n.js
+```
+
+La contrepartie est un risque de dérive entre les deux fichiers. D'où le mode
+`--verifier`, branché sur `npm test` : **toute modification d'un libellé dans
+`i18n.js` doit être suivie de `npm run prerendre`**, sinon les tests échouent.
+
 ## Langue de l'interface
 
 Le mécanisme français/pulaar est en place, mais le **sélecteur reste caché**
