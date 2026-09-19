@@ -48,6 +48,12 @@ export default async function handler(req, res) {
 
   const source = texte(corps.texte_source, LIMITES.texte_source);
   const sortie = texte(corps.traduction_modele, LIMITES.traduction_modele);
+  // `undefined` signale un champ refusé (trop long, ou pas une chaîne), `null`
+  // un champ absent. Les confondre annoncerait « retour incomplet » à qui a
+  // simplement écrit trop long, et l'enverrait chercher ce qui manque.
+  if (source === undefined || sortie === undefined) {
+    return res.status(400).json({ erreur: 'Champ trop long.' });
+  }
   if (!source || !sortie) {
     return res.status(400).json({ erreur: 'Retour incomplet.' });
   }

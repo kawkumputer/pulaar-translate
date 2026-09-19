@@ -72,13 +72,19 @@ async function cas(nom, handler, req, attendu) {
 console.log('\n── /api/retour : ce qui doit passer et ce qui doit être refusé ──');
 await cas('retour valide', retour, { method: 'POST', body: BON }, 201);
 await cas('GET refusé', retour, { method: 'GET', body: {} }, 405);
-await cas('corps vide', retour, { method: 'POST', body: {} }, 400);
+const vide = await cas('corps vide', retour, { method: 'POST', body: {} }, 400);
+verifier('« corps vide » dit incomplet', vide.corps.erreur === 'Retour incomplet.',
+  vide.corps.erreur);
 await cas('direction inventée', retour,
   { method: 'POST', body: { ...BON, direction: 'fr → wolof' } }, 400);
 await cas('verdict inventé', retour,
   { method: 'POST', body: { ...BON, verdict: 'bof' } }, 400);
-await cas('texte source trop long', retour,
+const trop = await cas('texte source trop long', retour,
   { method: 'POST', body: { ...BON, texte_source: 'a'.repeat(1001) } }, 400);
+// Trop long et incomplet sont deux problèmes différents : les confondre envoie
+// chercher un champ qui manque alors qu'il faut raccourcir.
+verifier('« trop long » ne se dit pas « incomplet »',
+  trop.corps.erreur === 'Champ trop long.', trop.corps.erreur);
 await cas('correction trop longue', retour,
   { method: 'POST', body: { ...BON, verdict: 'mauvaise', correction: 'a'.repeat(2001) } }, 400);
 await cas('nom trop long', retour,
