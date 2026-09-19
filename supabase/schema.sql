@@ -24,9 +24,6 @@ create table if not exists public.retours (
   verdict           text not null check (verdict in ('bonne', 'mauvaise')),
   correction        text,
 
-  -- Le modèle vise le Fuuta Tooro. Une correction juste en Maasina y serait
-  -- fausse : sans ce champ, on ne pourrait pas faire la différence.
-  dialecte          text,
   contributeur      text,
 
   -- Quelle version du modèle était jugée. Le champ qu'on oublie et qu'on
@@ -52,6 +49,11 @@ create index if not exists retours_tri
 -- Limitation de débit : compter les envois récents d'une même empreinte.
 create index if not exists retours_debit
   on public.retours (ip_hachee, cree_le desc);
+
+-- Le projet ne couvre que le Fuuta Tooro, et le formulaire le dit au
+-- contributeur : le tri des autres parlers se fait donc à la relecture, pas
+-- par une colonne. Si cela devient pesant, la remettre tient en une ligne :
+--     alter table public.retours add column dialecte text;
 
 alter table public.retours enable row level security;
 

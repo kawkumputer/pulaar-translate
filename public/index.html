@@ -167,28 +167,14 @@
             <label for="retour-correction" data-i18n="retour.correction"></label>
             <textarea id="retour-correction" maxlength="2000"></textarea>
           </div>
-          <div class="duo">
-            <div>
-              <label for="retour-parler" data-i18n="retour.parler"></label>
-              <!-- Une liste fermée plutôt qu'un champ libre : le modèle vise le
-                   Fuuta Tooro, et sans cette information une correction d'un
-                   autre parler serait comptée comme une erreur du modèle. -->
-              <select id="retour-parler">
-                <option value="">—</option>
-                <option value="Fuuta Tooro">Fuuta Tooro</option>
-                <option value="Fuuta Jaloo">Fuuta Jaloo</option>
-                <option value="Maasina">Maasina</option>
-                <option value="Adamawa">Adamawa</option>
-                <option value="Sokoto">Sokoto</option>
-                <option value="inconnu" data-i18n="retour.parler.nsp"></option>
-              </select>
-            </div>
-            <div>
-              <label for="retour-nom" data-i18n="retour.nom"></label>
-              <input id="retour-nom" maxlength="80" autocomplete="off">
-            </div>
+          <div>
+            <label for="retour-nom" data-i18n="retour.nom"></label>
+            <input id="retour-nom" maxlength="80" autocomplete="off">
           </div>
-          <p class="mention" data-i18n="retour.avis"></p>
+          <p class="mention">
+            <span data-i18n="retour.fuuta"></span>
+            <span data-i18n="retour.avis"></span>
+          </p>
           <div><button type="submit" data-i18n="retour.envoyer"></button></div>
         </form>
 
@@ -208,7 +194,7 @@
 </div>
 
 <script type="module">
-import { LANGUES, t } from './i18n.js';
+import { LANGUES, PULAAR_PRET, t } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const source = $('source'), sortie = $('sortie'), etat = $('etat');
@@ -230,7 +216,9 @@ function langueInitiale() {
   return LANGUES[nav] ? nav : 'fr';
 }
 
-let langue = langueInitiale();
+// Tant que le pulaar n'est pas complet, l'interface reste en français, même si
+// un choix « pulaar » traîne dans le navigateur depuis une visite précédente.
+let langue = PULAAR_PRET ? langueInitiale() : 'fr';
 
 function appliquerLangue() {
   document.documentElement.lang = langue;
@@ -251,13 +239,17 @@ function appliquerLangue() {
   try { localStorage.setItem(CLE, langue); } catch (e) { /* ignoré */ }
 }
 
-for (const [code, info] of Object.entries(LANGUES)) {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.dataset.langue = code;
-  b.textContent = info.etiquette;
-  b.addEventListener('click', () => { langue = code; appliquerLangue(); });
-  barreLangues.appendChild(b);
+if (PULAAR_PRET) {
+  for (const [code, info] of Object.entries(LANGUES)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.langue = code;
+    b.textContent = info.etiquette;
+    b.addEventListener('click', () => { langue = code; appliquerLangue(); });
+    barreLangues.appendChild(b);
+  }
+} else {
+  barreLangues.hidden = true;
 }
 
 // ── Traduction ────────────────────────────────────────────────────────────
@@ -309,7 +301,6 @@ async function envoyerRetour(verdict, correction) {
         traduction_modele: juge.traduction,
         verdict,
         correction: correction || null,
-        dialecte: $('retour-parler').value || null,
         contributeur: $('retour-nom').value.trim() || null,
       }),
     });

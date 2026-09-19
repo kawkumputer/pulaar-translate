@@ -68,7 +68,8 @@
   <p class="sous">
     Rien ne part à l’entraînement sans passer par ici. Une correction venue du
     web est un candidat, pas une donnée : elle se juge comme une proposition
-    d’un collaborateur, dialecte et orthographe compris.
+    d’un collaborateur. Le projet ne couvre que le <strong>Fuuta Tooro</strong> —
+    une forme juste dans un autre parler est à rejeter ici.
   </p>
 
   <!-- Connexion ---------------------------------------------------------- -->
@@ -140,10 +141,10 @@ function carte(r) {
   const versPulaar = r.direction === 'fr → pul';
   const propose = r.verdict === 'bonne' ? r.traduction_modele : r.correction;
 
-  // Tout passe par textContent, jamais par innerHTML : `contributeur` et
-  // `dialecte` sont saisis par un visiteur. Une page d'administration qui
-  // interpole du HTML fourni par l'utilisateur offre à n'importe qui un script
-  // exécuté dans la session de l'administrateur.
+  // Tout passe par textContent, jamais par innerHTML : `contributeur` est saisi
+  // par un visiteur. Une page d'administration qui interpole du HTML fourni par
+  // l'utilisateur offre à n'importe qui un script exécuté dans la session de
+  // l'administrateur.
   const meta = document.createElement('div');
   meta.className = 'meta';
   const jeton = (texte, classe) => {
@@ -159,7 +160,6 @@ function carte(r) {
   meta.appendChild(jeton(dateFr(r.cree_le)));
   meta.appendChild(jeton(r.direction));
   meta.appendChild(jeton(`modèle ${r.modele}`));
-  if (r.dialecte) meta.appendChild(jeton(`parler : ${r.dialecte}`));
   if (r.contributeur) meta.appendChild(jeton(`par ${r.contributeur}`));
   el.appendChild(meta);
 

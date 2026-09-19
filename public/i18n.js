@@ -15,6 +15,14 @@ export const LANGUES = {
   pul: { etiquette: 'Pulaar',   drapeau: 'PUL' },
 };
 
+// Le sélecteur de langue reste caché tant que le pulaar n'est pas complet.
+// Une interface traduite à 10 % donne l'impression d'un site à moitié cassé,
+// ce qui est pire que de l'assumer en français. Tout le mécanisme de traduction
+// reste en place : il suffira de repasser cette constante à `true`.
+//
+//     npm run i18n     → ce qu'il reste à remplir
+export const PULAAR_PRET = false;
+
 export const TEXTES = {
   fr: {
     'doc.titre':        'Pulaar-Translate — Traducteur Français ↔ Pulaar (Fuuta Tooro)',
@@ -47,8 +55,10 @@ export const TEXTES = {
     'retour.non':       'Non, je propose mieux',
     'retour.correction': 'La bonne traduction',
     'retour.exemple':   'Écrivez ici la traduction juste…',
-    'retour.parler':    'Votre parler (facultatif)',
-    'retour.parler.nsp': 'Je ne sais pas',
+    // Le projet ne couvre que le Fuuta Tooro. Le dire sur le formulaire évite
+    // de recevoir des corriges d'autres parlers, justes ailleurs mais fausses
+    // ici, qu'on prendrait pour des erreurs du modèle.
+    'retour.fuuta':     'Le modèle apprend le pulaar du Fuuta Tooro.',
     'retour.nom':       'Votre nom (facultatif)',
     'retour.envoyer':   'Envoyer',
     'retour.avis':      'Votre contribution pourra servir à améliorer le modèle. N’y mettez pas d’information personnelle.',
@@ -90,8 +100,7 @@ export const TEXTES = {
     'retour.non':       '',
     'retour.correction': '',
     'retour.exemple':   '',
-    'retour.parler':    '',
-    'retour.parler.nsp': '',
+    'retour.fuuta':     '',
     'retour.nom':       '',
     'retour.envoyer':   '',
     'retour.avis':      '',

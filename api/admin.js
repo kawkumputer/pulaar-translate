@@ -16,7 +16,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const CHAMPS = [
   'id', 'cree_le', 'texte_source', 'direction', 'traduction_modele',
-  'verdict', 'correction', 'dialecte', 'contributeur', 'modele',
+  'verdict', 'correction', 'contributeur', 'modele',
   'statut', 'note_interne',
 ].join(',');
 

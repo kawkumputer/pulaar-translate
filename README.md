@@ -87,8 +87,10 @@ La sortie doit lister un endpoint nommé `/translate` prenant deux entrées
 ## Retours des visiteurs
 
 Sous chaque traduction, le visiteur répond « cette traduction est-elle
-correcte ? ». Un « non » ouvre un champ de correction, plus deux champs
-facultatifs : son parler et son nom.
+correcte ? ». Un « non » ouvre un champ de correction, plus son nom,
+facultatif. Le formulaire rappelle que le modèle apprend le pulaar du **Fuuta
+Tooro** : c'est ce qui limite les corrections venues d'autres parlers, justes
+ailleurs mais fausses ici. Le tri définitif se fait à la relecture.
 
 **Mise en service** : exécuter [`supabase/schema.sql`](supabase/schema.sql)
 une fois dans Supabase (SQL Editor → New query → coller → Run), puis
@@ -99,7 +101,6 @@ renseigner les quatre variables Supabase ci-dessus.
 | Colonne | Pourquoi elle existe |
 |---|---|
 | `modele` | Dans six mois, un retour sans version du modèle n'est plus interprétable |
-| `dialecte` | Le modèle vise le Fuuta Tooro : une correction juste en Maasina y serait fausse |
 | `statut` | Rien ne part à l'entraînement sans être passé à `valide` à la main |
 | `ip_hachee` | Empreinte salée, jamais l'adresse — limitation de débit uniquement |
 
@@ -121,6 +122,19 @@ dans le dataset. Le bouton d'export produit un JSONL au schéma
 Les retours jugés « bonne » sont exportés eux aussi : ils confirment une sortie
 du modèle, ce qui est de la donnée valide. Un « mauvaise » sans correction ne
 l'est pas — il signale un trou, il ne le comble pas.
+
+## Langue de l'interface
+
+Le mécanisme français/pulaar est en place, mais le **sélecteur reste caché**
+tant que `PULAAR_PRET` vaut `false` dans [`public/i18n.js`](public/i18n.js).
+Une interface traduite à 10 % donne l'impression d'un site à moitié cassé, ce
+qui est pire que de l'assumer en français.
+
+```bash
+npm run i18n     # ce qu'il reste à remplir dans l'objet `pul`
+```
+
+Quand tout est rempli, passer `PULAAR_PRET` à `true` : rien d'autre à changer.
 
 ## Sécurité
 

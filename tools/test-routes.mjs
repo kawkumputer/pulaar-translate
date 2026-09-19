@@ -137,6 +137,13 @@ verifier('schéma {fr, pul, source} exactement',
     && p.source === 'retour_public'));
 
 console.log('\n── Ce qui est réellement écrit en base ─────────────────────────');
+inseres = [];
+await cas('champ inconnu envoyé par le client', retour,
+  { method: 'POST', body: { ...BON, dialecte: 'Maasina', statut: 'valide' } }, 201);
+verifier('les champs non prévus sont ignorés, pas recopiés',
+  !('dialecte' in inseres[0]) && !('statut' in inseres[0]),
+  Object.keys(inseres[0]).join(','));
+
 const premier = inseres[0];
 console.log('  colonnes  :', Object.keys(premier).join(', '));
 console.log('  modele    :', premier.modele);

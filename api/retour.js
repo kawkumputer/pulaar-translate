@@ -15,7 +15,6 @@ const LIMITES = {
   texte_source: 1000,
   traduction_modele: 3000,
   correction: 2000,
-  dialecte: 60,
   contributeur: 80,
 };
 
@@ -60,9 +59,8 @@ export default async function handler(req, res) {
   }
 
   const correction = texte(corps.correction, LIMITES.correction);
-  const dialecte = texte(corps.dialecte, LIMITES.dialecte);
   const contributeur = texte(corps.contributeur, LIMITES.contributeur);
-  if (correction === undefined || dialecte === undefined || contributeur === undefined) {
+  if (correction === undefined || contributeur === undefined) {
     return res.status(400).json({ erreur: 'Champ trop long.' });
   }
 
@@ -96,7 +94,6 @@ export default async function handler(req, res) {
       traduction_modele: sortie,
       verdict: corps.verdict,
       correction,
-      dialecte,
       contributeur,
       modele: MODELE,
       ip_hachee,
