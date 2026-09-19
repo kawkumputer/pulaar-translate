@@ -71,6 +71,12 @@
     d’un collaborateur. Le projet ne couvre que le <strong>Fuuta Tooro</strong> —
     une forme juste dans un autre parler est à rejeter ici.
   </p>
+  <p class="sous">
+    <strong>Rejeter</strong> garde la ligne : la correction ne vaut rien, mais le
+    texte source dit qu’un tour de phrase est demandé et que le modèle le rate —
+    c’est la feuille de route du lot suivant. <strong>Supprimer</strong> efface
+    pour de bon, à réserver aux insultes et au spam.
+  </p>
 
   <!-- Connexion ---------------------------------------------------------- -->
   <form class="carte" id="connexion">
@@ -200,6 +206,17 @@ function carte(r) {
     actions.appendChild(bouton('Remettre à dépouiller',
       () => changer(r.id, 'nouveau'), true));
   }
+
+  // Rejeter garde la ligne : sa correction ne vaut rien, mais son texte source
+  // dit qu'un tour de phrase est demandé et que le modèle le rate. Supprimer
+  // est pour ce qu'on ne veut pas conserver du tout — insultes, spam.
+  const jeter = bouton('Supprimer', () => effacer(r.id, r.texte_source), true);
+  jeter.style.marginLeft = 'auto';
+  jeter.style.color = 'var(--alerte)';
+  jeter.title = 'Efface définitivement. Réservé aux insultes et au spam : '
+    + 'un rejet ordinaire garde le texte source, qui reste utile.';
+  actions.appendChild(jeter);
+
   el.appendChild(actions);
   return el;
 }
@@ -258,6 +275,28 @@ async function changer(id, statut) {
       method: 'PATCH',
       body: JSON.stringify({ id, statut }),
     });
+    if (rep.status === 401) return deconnecter();
+    if (!rep.ok) {
+      const data = await rep.json().catch(() => ({}));
+      return dire('etat-console', data.erreur || 'Échec.', true);
+    }
+    charger();
+  } catch (err) {
+    dire('etat-console', 'Connexion impossible.', true);
+  }
+}
+
+// Seule action irréversible de la page, donc la seule à demander confirmation.
+// Le texte source est rappelé dans la question : on supprime la bonne ligne,
+// pas celle d'à côté.
+async function effacer(id, apercu) {
+  const extrait = apercu.length > 60 ? `${apercu.slice(0, 60)}…` : apercu;
+  if (!confirm(`Effacer définitivement ce retour ?\n\n« ${extrait} »\n\n`
+    + 'À réserver aux insultes et au spam. Pour une correction simplement '
+    + 'mauvaise, « Rejeter » garde le texte source, qui reste utile.')) return;
+  try {
+    const rep = await appeler(`/api/admin?id=${encodeURIComponent(id)}`,
+      { method: 'DELETE' });
     if (rep.status === 401) return deconnecter();
     if (!rep.ok) {
       const data = await rep.json().catch(() => ({}));

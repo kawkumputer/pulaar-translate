@@ -19,6 +19,7 @@ process.env.MODELE_VERSION = 'v11';
 let recents = [];   // ce que renvoie la requête de limitation de débit
 let aExporter = []; // ce que renvoie la requête d'export
 let inseres = [];   // ce qui a été écrit
+let supprimes = []; // les URL de suppression réellement envoyées
 
 globalThis.fetch = async (url, options) => {
   const u = String(url);
@@ -27,6 +28,7 @@ globalThis.fetch = async (url, options) => {
   });
   if (options.method === 'POST') { inseres.push(JSON.parse(options.body)); return rep(null, 201); }
   if (options.method === 'PATCH') return rep([{ id: 'x', statut: 'valide' }]);
+  if (options.method === 'DELETE') { supprimes.push(u); return rep(null); }
   if (u.includes('cree_le=gte')) return rep(recents);
   if (u.includes('statut=eq.valide')) return rep(aExporter);
   if (u.includes('select=statut,verdict')) return rep([{ statut: 'nouveau', verdict: 'bonne' }]);
@@ -112,7 +114,21 @@ await cas('PATCH statut inventé', admin,
   { method: 'PATCH', headers: AUTH, body: { id: 'a1b2c3d4-1111-2222-3333-444455556666', statut: 'super' } }, 400);
 await cas('PATCH correct', admin,
   { method: 'PATCH', headers: AUTH, body: { id: 'a1b2c3d4-1111-2222-3333-444455556666', statut: 'valide' } }, 200);
-await cas('DELETE refusé', admin, { method: 'DELETE', headers: AUTH }, 405);
+await cas('DELETE sans identifiant', admin, { method: 'DELETE', headers: AUTH }, 400);
+await cas('DELETE identifiant fabriqué', admin,
+  { method: 'DELETE', headers: AUTH, query: { id: 'eq.*' } }, 400);
+await cas('DELETE correct', admin,
+  { method: 'DELETE', headers: AUTH, query: { id: 'a1b2c3d4-1111-2222-3333-444455556666' } }, 200);
+await cas('DELETE sans mot de passe', admin,
+  { method: 'DELETE', headers: {}, query: { id: 'a1b2c3d4-1111-2222-3333-444455556666' } }, 401);
+await cas('PUT refusé', admin, { method: 'PUT', headers: AUTH }, 405);
+
+// Une seule suppression doit avoir atteint la base : celles aux identifiants
+// invalides sont refusées AVANT d'entrer dans l'URL PostgREST. Sinon un filtre
+// fabriqué emporterait plus que la ligne visée.
+verifier('seule la suppression valide atteint la base',
+  supprimes.length === 1 && supprimes[0].includes('id=eq.a1b2c3d4-1111-2222-3333-444455556666'),
+  `${supprimes.length} envoi(s) : ${supprimes.join(' | ')}`);
 
 console.log('\n── L’export : le seul endroit qui touche au schéma du dataset ──');
 aExporter = [

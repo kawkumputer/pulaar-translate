@@ -4,12 +4,19 @@
 //   GET    ?statut=nouveau          liste les retours, avec les compteurs
 //   GET    ?format=jsonl&statut=…   exporte au schéma du dataset {fr, pul, source}
 //   PATCH  {id, statut, note}       valide ou rejette un retour
+//   DELETE ?id=…                    efface définitivement — spam et abus seuls
+//
+// Rejeter et supprimer ne servent pas à la même chose. Un retour rejeté reste
+// en base : sa correction ne vaut rien, mais son TEXTE SOURCE dit qu'un tour de
+// phrase est demandé et que le modèle le rate — c'est la feuille de route du
+// lot suivant. La suppression est réservée à ce qu'on ne veut pas conserver du
+// tout : insultes, spam.
 //
 // Règle de fond : rien ne part à l'entraînement sans être passé par ici. Une
 // correction venue du web est un candidat, pas une donnée. L'export ne sort
 // donc que ce qui a été validé à la main.
 
-import { configure, lire, modifier, memeSecret } from './_supabase.js';
+import { configure, lire, modifier, supprimer, memeSecret } from './_supabase.js';
 
 const STATUTS = new Set(['nouveau', 'valide', 'rejete']);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -97,6 +104,18 @@ export default async function handler(req, res) {
       }
       const maj = await modifier('retours', `id=eq.${id}`, champs);
       return res.status(200).json({ retour: Array.isArray(maj) ? maj[0] : maj });
+    }
+
+    if (req.method === 'DELETE') {
+      // L'identifiant est validé avant d'entrer dans l'URL PostgREST : sans ce
+      // contrôle, une chaîne fabriquée changerait le filtre et la suppression
+      // porterait sur autre chose que la ligne visée.
+      const id = String(req.query.id || '');
+      if (!UUID.test(id)) {
+        return res.status(400).json({ erreur: 'Identifiant invalide.' });
+      }
+      await supprimer('retours', `id=eq.${id}`);
+      return res.status(200).json({ supprime: true });
     }
 
     return res.status(405).json({ erreur: 'Méthode non autorisée' });

@@ -49,6 +49,13 @@ export function lire(table, requete) {
   return appeler(`${table}?${requete}`, { method: 'GET', headers: enTetes() });
 }
 
+export function supprimer(table, requete) {
+  return appeler(`${table}?${requete}`, {
+    method: 'DELETE',
+    headers: enTetes({ Prefer: 'return=minimal' }),
+  });
+}
+
 export function modifier(table, requete, champs) {
   return appeler(`${table}?${requete}`, {
     method: 'PATCH',

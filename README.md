@@ -123,6 +123,18 @@ Les retours jugés « bonne » sont exportés eux aussi : ils confirment une sor
 du modèle, ce qui est de la donnée valide. Un « mauvaise » sans correction ne
 l'est pas — il signale un trou, il ne le comble pas.
 
+### Rejeter n'est pas supprimer
+
+**Rejeter** garde la ligne en base, simplement hors de la vue de travail. Même
+quand la correction ne vaut rien, le *texte source* dit qu'un tour de phrase est
+demandé et que le modèle le rate : c'est la feuille de route du lot suivant, et
+la jeter serait perdre le signal en même temps que le bruit. Garder la trace
+évite aussi de rejuger deux fois la même proposition.
+
+**Supprimer** efface définitivement, et n'existe que pour ce qu'on ne veut pas
+conserver du tout : insultes, spam. C'est la seule action irréversible de la
+page, donc la seule qui demande confirmation.
+
 ## Langue de l'interface
 
 Le mécanisme français/pulaar est en place, mais le **sélecteur reste caché**
