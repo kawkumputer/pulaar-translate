@@ -349,8 +349,10 @@ function demarrerChrono() {
   etat.className = 'etat';
   const rendre = () => {
     const s = Math.round((Date.now() - debut) / 1000);
-    // 15 s : sur GPU une traduction prend quelques secondes, au-dela c'est un reveil
-    etat.textContent = s < 15
+    // 30 s : dix mesures donnent une mediane de 6,8 s et des pointes a 25 s sur
+    // le GPU partage. Un seuil plus bas annoncerait un reveil a chaque
+    // traduction un peu lente, ce qui reviendrait a crier au loup.
+    etat.textContent = s < 30
       ? `${t('etat.encours', langue)} ${s} s`
       : `${t('etat.longue', langue)} ${s} s`;
   };

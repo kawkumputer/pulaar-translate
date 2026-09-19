@@ -28,7 +28,10 @@ export const TEXTES = {
     'doc.titre':        'Pulaar-Translate — Traducteur Français ↔ Pulaar (Fuuta Tooro)',
     'titre':            'Pulaar-Translate — Traducteur Français ↔ Pulaar',
     'accroche':         'Dialecte Fuuta Tooro · modèle NLLB affiné sur un corpus validé par des locuteurs natifs',
-    'avis':             'Le modèle tourne sur un GPU partagé : comptez quelques secondes par traduction. La toute première peut demander jusqu’à une minute, le temps que le service sorte de veille et charge le modèle.',
+    // Mesuré le 2026-09-19 sur dix traductions : médiane 6,8 s, pointes à 25 s.
+    // Annoncer « quelques secondes » ferait passer une attente normale pour une
+    // panne, et c'est le genre de doute qui fait fermer l'onglet.
+    'avis':             'Le modèle tourne sur un GPU partagé avec d’autres services : comptez de quelques secondes à une demi-minute selon la charge du moment. La première traduction après une période creuse peut demander une minute.',
     'label.source':     'Texte source',
     'label.traduction': 'Traduction',
     'label.direction':  'Direction',
@@ -40,7 +43,7 @@ export const TEXTES = {
     'btn.traduire':     'Traduire',
     'btn.effacer':      'Effacer',
     'etat.encours':     'Traduction en cours…',
-    'etat.longue':      'Toujours en cours… le service sort de veille et charge le modèle.',
+    'etat.longue':      'Toujours en cours… le GPU partagé est chargé, ou le service sort de veille.',
     'etat.termine':     'Terminé.',
     'etat.echec':       'Échec de la traduction.',
     'etat.reseau':      'Connexion impossible. Vérifiez votre réseau et réessayez.',
