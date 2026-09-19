@@ -349,10 +349,10 @@ function demarrerChrono() {
   etat.className = 'etat';
   const rendre = () => {
     const s = Math.round((Date.now() - debut) / 1000);
-    // 30 s : dix mesures donnent une mediane de 6,8 s et des pointes a 25 s sur
-    // le GPU partage. Un seuil plus bas annoncerait un reveil a chaque
-    // traduction un peu lente, ce qui reviendrait a crier au loup.
-    etat.textContent = s < 30
+    // 15 s : depuis le chargement du modele en float16, dix mesures donnent une
+    // mediane de 0,7 s et un maximum de 4,8 s. Au-dela de 15 s, ce n'est plus
+    // une traduction lente, c'est un service qui se reveille.
+    etat.textContent = s < 15
       ? `${t('etat.encours', langue)} ${s} s`
       : `${t('etat.longue', langue)} ${s} s`;
   };

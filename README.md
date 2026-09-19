@@ -191,9 +191,18 @@ Quand tout est rempli, passer `PULAAR_PRET` à `true` : rien d'autre à changer.
 
 | | |
 |---|---|
-| quelques secondes par traduction | ZeroGPU, GPU partagé |
+| ~0,7 s par traduction | mesuré le 2026-09-19, maximum 4,8 s sur le premier appel |
 | jusqu'à une minute au réveil | le Space s'endort et doit recharger le modèle |
 | quota GPU journalier | réserve de 30 s par appel ; épuisée, le site répond 429 |
+
+Deux réglages du Space conditionnent ces chiffres, et tous deux ont coûté une
+mesure pour être trouvés :
+
+- **`@spaces.GPU(duration=30)`** — le quota se facture à la durée *réservée*,
+  pas à la durée consommée. À 120 s, un seul appel de 3 s épuisait la réserve
+  du jour.
+- **modèle chargé en `float16`** — il était chargé en `float32` puis converti à
+  chaque appel. Médiane passée de 8,9 s à 0,7 s en supprimant cette conversion.
 
 La page annonce ces délais et affiche un chronomètre, pour qu'un visiteur ne
 croie pas que le service est cassé.

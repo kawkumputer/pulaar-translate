@@ -28,10 +28,11 @@ export const TEXTES = {
     'doc.titre':        'Pulaar-Translate — Traducteur Français ↔ Pulaar (Fuuta Tooro)',
     'titre':            'Pulaar-Translate — Traducteur Français ↔ Pulaar',
     'accroche':         'Dialecte Fuuta Tooro · modèle NLLB affiné sur un corpus validé par des locuteurs natifs',
-    // Mesuré le 2026-09-19 sur dix traductions : médiane 6,8 s, pointes à 25 s.
-    // Annoncer « quelques secondes » ferait passer une attente normale pour une
-    // panne, et c'est le genre de doute qui fait fermer l'onglet.
-    'avis':             'Le modèle tourne sur un GPU partagé avec d’autres services : comptez de quelques secondes à une demi-minute selon la charge du moment. La première traduction après une période creuse peut demander une minute.',
+    // Mesuré le 2026-09-19 sur dix traductions, après le chargement du modèle
+    // en float16 : médiane 0,7 s, maximum 4,8 s sur le tout premier appel.
+    // Le chiffre annoncé doit rester au-dessus du mesuré, jamais l'inverse :
+    // c'est le doute sur une panne qui fait fermer l'onglet.
+    'avis':             'Le modèle tourne sur un GPU partagé : comptez moins de deux secondes par traduction. La première après une période creuse peut demander jusqu’à une minute, le temps que le service sorte de veille.',
     'label.source':     'Texte source',
     'label.traduction': 'Traduction',
     'label.direction':  'Direction',
