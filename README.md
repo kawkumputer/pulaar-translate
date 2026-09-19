@@ -135,6 +135,29 @@ la jeter serait perdre le signal en même temps que le bruit. Garder la trace
 conserver du tout : insultes, spam. C'est la seule action irréversible de la
 page, donc la seule qui demande confirmation.
 
+## Domaine
+
+Canonique : **`https://www.pulaar-translate.com`**. L'apex
+`pulaar-translate.com` y redirige en 308, et `pulaar-translate.vercel.app`
+reste servi mais pointe dessus par sa balise canonique.
+
+Le domaine est écrit en dur à six endroits — les moteurs lisent les balises
+avant que le moindre JavaScript ne s'exécute, donc aucune constante partagée ne
+peut les alimenter. La contrepartie de cette duplication est un contrôle :
+
+```bash
+npm run domaine     # inclus dans npm test
+```
+
+Il refuse qu'un domaine abandonné subsiste, et signale une `og-image.png` plus
+ancienne que son générateur — l'URL est **dessinée dans l'image**, un
+remplacement de texte ne suffit donc pas, il faut relancer
+`python tools/og-image.py`.
+
+Pour déménager : changer `CANONIQUE` dans
+[`tools/verif-domaine.mjs`](tools/verif-domaine.mjs), lancer `npm run domaine`,
+et corriger ce qu'il signale.
+
 ## Langue de l'interface
 
 Le mécanisme français/pulaar est en place, mais le **sélecteur reste caché**

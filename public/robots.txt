@@ -3,4 +3,4 @@ Allow: /
 Disallow: /api/
 Disallow: /admin.html
 
-Sitemap: https://pulaar-translate.vercel.app/sitemap.xml
+Sitemap: https://www.pulaar-translate.com/sitemap.xml

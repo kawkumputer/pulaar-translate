@@ -55,7 +55,7 @@ def main():
     d.rectangle([x, 402, x + 150, 405], fill=ACCENT)
 
     d.text((x, 444), SPECIAUX, font=f_spec, fill=ENCRE)
-    d.text((x, 536), 'Gratuit · pulaar-translate.vercel.app', font=f_note, fill=DOUX)
+    d.text((x, 536), 'Gratuit · pulaar-translate.com', font=f_note, fill=DOUX)
 
     img.save(SORTIE, 'PNG', optimize=True)
 

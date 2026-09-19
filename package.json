@@ -8,7 +8,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node tools/test-routes.mjs",
+    "test": "node tools/verif-domaine.mjs && node tools/test-routes.mjs",
+    "domaine": "node tools/verif-domaine.mjs",
     "i18n": "node tools/i18n-manquants.mjs"
   },
   "dependencies": {
