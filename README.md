@@ -2,6 +2,9 @@
 
 Démonstrateur public du traducteur **français ↔ pulaar** (dialecte Fuuta Tooro).
 
+En ligne : **<https://www.pulaar-translate.com>** · Contact :
+**pulaartranslate@gmail.com**
+
 Page unique déployée sur Vercel, qui appelle le Space Hugging Face
 `kawkumputer/PulaarAI` — lequel sert le modèle NLLB-1.3B affiné en LoRA.
 

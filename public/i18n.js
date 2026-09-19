@@ -47,6 +47,7 @@ export const TEXTES = {
     'pied':             'Projet ouvert autour du pulaar du Fuuta Tooro. Les modèles sont publiés',
     'pied.lien':        'sur Hugging Face',
     'pied.suite':       'Les traductions automatiques comportent des erreurs : faites-les vérifier par un locuteur avant tout usage important.',
+    'pied.contact':     'Une question, une remarque, envie de contribuer ?',
 
     // Retours des visiteurs. Ce sont eux qui disent au modèle où il se trompe :
     // le « non » doit être aussi facile à donner que le « oui ».
@@ -90,6 +91,7 @@ export const TEXTES = {
     'pied':             '',
     'pied.lien':        '',
     'pied.suite':       '',
+    'pied.contact':     '',
 
     // « Oui » et « non » ne figurent pas dans les 8 080 paires validées, et
     // « merci » y apparaît sous cinq formes concurrentes. Rien n'est rempli
