@@ -390,8 +390,12 @@ async function traduire() {
     sortie.textContent = data.traduction;
     etat.textContent = t('etat.termine', langue);
     etat.className = 'etat';
-    juge = { texte, direction: direction.value, traduction: data.traduction };
-    retour.hidden = false;
+    // `data.retours` vaut false tant que Supabase n'est pas configuré : mieux
+    // vaut pas de bloc du tout qu'un bouton qui répond « pas encore activé ».
+    if (data.retours) {
+      juge = { texte, direction: direction.value, traduction: data.traduction };
+      retour.hidden = false;
+    }
   } catch (err) {
     arreterChrono();
     etat.textContent = t('etat.reseau', langue);

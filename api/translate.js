@@ -15,6 +15,14 @@ const SPACE = process.env.HF_SPACE || 'kawkumputer/PulaarAI';
 const DIRECTIONS = new Set(['fr → pul', 'pul → fr']);
 const MAX_CARACTERES = 1000;
 
+// Le bloc de retour ne doit pas s'afficher tant que Supabase n'est pas
+// configuré : le visiteur cliquerait sur un bouton qui répond « pas encore
+// activé ». La réponse de traduction porte donc l'information, ce qui évite
+// une requête de sondage supplémentaire à chaque chargement de page.
+const RETOURS_ACTIFS = Boolean(
+  process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY,
+);
+
 // La connexion est coûteuse : on la garde entre deux invocations tant que
 // l'instance serverless reste chaude.
 let clientPromise = null;
@@ -65,7 +73,7 @@ export default async function handler(req, res) {
     if (typeof traduction !== 'string') {
       throw new Error('Réponse inattendue du Space');
     }
-    return res.status(200).json({ traduction });
+    return res.status(200).json({ traduction, retours: RETOURS_ACTIFS });
   } catch (err) {
     console.error('Echec de traduction :', err);
     // Le cas le plus frequent : le Space etait en veille et n'a pas repondu
