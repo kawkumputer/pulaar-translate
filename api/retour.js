@@ -26,6 +26,11 @@ const MODELE = process.env.MODELE_VERSION || 'v11';
 // plusieurs phrases d'affilée reste en dessous ; un script, non.
 const MAX_PAR_MINUTE = 5;
 
+// Fenêtre au-delà de laquelle un retour identique est considéré comme un envoi
+// délibéré, non comme un doublon. Dix minutes couvrent un rechargement de page
+// ou une hésitation, sans empêcher quelqu'un de resignaler plus tard.
+const DEDOUBLON_MINUTES = 10;
+
 function texte(valeur, max) {
   if (valeur === undefined || valeur === null || valeur === '') return null;
   if (typeof valeur !== 'string') return undefined; // undefined = invalide
@@ -91,6 +96,28 @@ export default async function handler(req, res) {
         return res.status(429).json({
           erreur: 'Trop d’envois d’un coup. Patientez une minute.',
         });
+      }
+    }
+
+    // Trois copies du même retour ont été relevées en base le 2026-09-20. Le
+    // front bloque désormais le double clic, mais un rechargement de page ou un
+    // renvoi manuel y échappent. On repère donc le doublon ici, sur le contenu.
+    //
+    // La réponse reste un succès : le retour EST enregistré, simplement depuis
+    // tout à l'heure. Répondre une erreur pousserait à recommencer.
+    if (ip_hachee) {
+      const depuis = new Date(Date.now() - DEDOUBLON_MINUTES * 60_000).toISOString();
+      const filtre = [
+        'select=id',
+        `ip_hachee=eq.${ip_hachee}`,
+        `cree_le=gte.${depuis}`,
+        `verdict=eq.${corps.verdict}`,
+        `texte_source=eq.${encodeURIComponent(source)}`,
+        `correction=${correction ? `eq.${encodeURIComponent(correction)}` : 'is.null'}`,
+      ].join('&');
+      const memes = await lire('retours', filtre);
+      if (Array.isArray(memes) && memes.length) {
+        return res.status(201).json({ enregistre: true, doublon: true });
       }
     }
 

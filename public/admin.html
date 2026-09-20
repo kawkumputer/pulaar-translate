@@ -56,6 +56,7 @@
            letter-spacing:.05em; color:var(--doux); font-weight:700}
   .bloc p{margin:0; white-space:pre-wrap; word-break:break-word}
   .bloc.propose{border-color:var(--accent)}
+  .bloc textarea{margin-top:4px; resize:vertical; min-height:52px}
   .etat{font-size:.86rem; color:var(--doux); min-height:1.3em; margin:10px 0 0}
   .etat.erreur{color:var(--alerte)}
   [hidden]{display:none !important}
@@ -145,7 +146,6 @@ function carte(r) {
   el.className = 'carte';
 
   const versPulaar = r.direction === 'fr → pul';
-  const propose = r.verdict === 'bonne' ? r.traduction_modele : r.correction;
 
   // Tout passe par textContent, jamais par innerHTML : `contributeur` est saisi
   // par un visiteur. Une page d'administration qui interpole du HTML fourni par
@@ -175,29 +175,57 @@ function carte(r) {
   paire.appendChild(bloc('Sortie du modèle', r.traduction_modele));
   el.appendChild(paire);
 
+  // La correction est modifiable avant validation. Un contributeur propose
+  // parfois deux variantes dans un seul champ — « X » ou « Y » — qui
+  // entreraient telles quelles dans le dataset. Trancher ici coûte moins cher
+  // que nettoyer le corpus après coup.
+  let champ = null;
   if (r.verdict === 'mauvaise') {
-    el.appendChild(bloc(
-      r.correction ? 'Correction proposée' : 'Signalé faux, sans correction',
-      r.correction || '—', Boolean(r.correction)));
+    const d = document.createElement('div');
+    d.className = r.correction ? 'bloc propose' : 'bloc';
+    const h = document.createElement('h3');
+    h.textContent = r.correction
+      ? 'Correction proposée — modifiable avant validation'
+      : 'Signalé faux, sans correction — vous pouvez en écrire une';
+    champ = document.createElement('textarea');
+    champ.rows = 2;
+    champ.value = r.correction || '';
+    d.append(h, champ);
+    el.appendChild(d);
   }
 
-  // Ce qui partirait dans le dataset si ce retour était validé. L'afficher
-  // évite de valider en imaginant le résultat.
-  if (propose) {
-    const apercu = document.createElement('p');
-    apercu.className = 'meta';
-    apercu.style.marginTop = '10px';
-    const fr = versPulaar ? r.texte_source : propose;
-    const pul = versPulaar ? propose : r.texte_source;
+  // Ce qui partirait dans le dataset, recalculé à chaque frappe : valider sans
+  // voir le résultat exact, c'est valider en l'imaginant.
+  const apercu = document.createElement('p');
+  apercu.className = 'meta';
+  apercu.style.marginTop = '10px';
+  const rendreApercu = () => {
+    const valeur = champ ? champ.value.trim() : r.traduction_modele;
+    if (!valeur) {
+      apercu.textContent = '→ rien à exporter tant qu’il n’y a pas de correction';
+      return;
+    }
+    const fr = versPulaar ? r.texte_source : valeur;
+    const pul = versPulaar ? valeur : r.texte_source;
     apercu.textContent = `→ dataset : {"fr": ${JSON.stringify(fr)}, "pul": ${JSON.stringify(pul)}}`;
-    el.appendChild(apercu);
-  }
+  };
+  rendreApercu();
+  if (champ) champ.addEventListener('input', rendreApercu);
+  el.appendChild(apercu);
 
   const actions = document.createElement('div');
   actions.className = 'rangee';
   actions.style.marginTop = '12px';
-  if (r.statut !== 'valide' && propose) {
-    actions.appendChild(bouton('Valider', () => changer(r.id, 'valide')));
+  if (r.statut !== 'valide') {
+    actions.appendChild(bouton('Valider', () => {
+      const valeur = champ ? champ.value.trim() : null;
+      // Valider sans correction produirait une ligne que l'export écarterait
+      // en silence : autant le dire ici.
+      if (champ && !valeur) {
+        return dire('etat-console', 'Écrivez une correction avant de valider.', true);
+      }
+      changer(r.id, 'valide', valeur);
+    }));
   }
   if (r.statut !== 'rejete') {
     actions.appendChild(bouton('Rejeter', () => changer(r.id, 'rejete'), true));
@@ -269,11 +297,15 @@ async function charger() {
   }
 }
 
-async function changer(id, statut) {
+async function changer(id, statut, correction) {
   try {
+    const charge = { id, statut };
+    // Seule une correction réellement amendée voyage : envoyer `undefined`
+    // écraserait la valeur d'origine par null lors d'un simple rejet.
+    if (typeof correction === 'string') charge.correction = correction;
     const rep = await appeler('/api/admin', {
       method: 'PATCH',
-      body: JSON.stringify({ id, statut }),
+      body: JSON.stringify(charge),
     });
     if (rep.status === 401) return deconnecter();
     if (!rep.ok) {

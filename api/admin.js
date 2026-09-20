@@ -91,7 +91,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PATCH') {
-      const { id, statut, note_interne } = req.body || {};
+      const { id, statut, note_interne, correction } = req.body || {};
       if (!UUID.test(String(id || ''))) {
         return res.status(400).json({ erreur: 'Identifiant invalide.' });
       }
@@ -101,6 +101,17 @@ export default async function handler(req, res) {
       const champs = { statut };
       if (typeof note_interne === 'string') {
         champs.note_interne = note_interne.slice(0, 500).trim() || null;
+      }
+      // La correction est amendable au moment du dépouillement. Un contributeur
+      // propose parfois deux variantes dans un seul champ — « X » ou « Y » —,
+      // qui entreraient telles quelles dans le dataset. Trancher à la relecture
+      // coûte moins cher que nettoyer un corpus après coup.
+      if (typeof correction === 'string') {
+        const propre = correction.trim();
+        if (propre.length > 2000) {
+          return res.status(400).json({ erreur: 'Correction trop longue.' });
+        }
+        champs.correction = propre || null;
       }
       const maj = await modifier('retours', `id=eq.${id}`, champs);
       return res.status(200).json({ retour: Array.isArray(maj) ? maj[0] : maj });

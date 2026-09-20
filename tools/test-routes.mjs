@@ -17,9 +17,11 @@ process.env.HACHAGE_SEL = 'sel-de-test';
 process.env.MODELE_VERSION = 'v11';
 
 let recents = [];   // ce que renvoie la requête de limitation de débit
+let memes = [];     // ce que renvoie la recherche de doublon
 let aExporter = []; // ce que renvoie la requête d'export
 let inseres = [];   // ce qui a été écrit
 let supprimes = []; // les URL de suppression réellement envoyées
+let patchs = [];    // les corps de modification réellement envoyés
 
 globalThis.fetch = async (url, options) => {
   const u = String(url);
@@ -27,8 +29,14 @@ globalThis.fetch = async (url, options) => {
     ok: status < 400, status, text: async () => (corps === null ? '' : JSON.stringify(corps)),
   });
   if (options.method === 'POST') { inseres.push(JSON.parse(options.body)); return rep(null, 201); }
-  if (options.method === 'PATCH') return rep([{ id: 'x', statut: 'valide' }]);
+  if (options.method === 'PATCH') {
+    patchs.push(JSON.parse(options.body));
+    return rep([{ id: 'x', statut: 'valide' }]);
+  }
   if (options.method === 'DELETE') { supprimes.push(u); return rep(null); }
+  // La recherche de doublon porte aussi cree_le=gte : elle se distingue de la
+  // limitation de débit par le filtre sur le verdict. L'ordre compte donc.
+  if (u.includes('verdict=eq.')) return rep(memes);
   if (u.includes('cree_le=gte')) return rep(recents);
   if (u.includes('statut=eq.valide')) return rep(aExporter);
   if (u.includes('select=statut,verdict')) return rep([{ statut: 'nouveau', verdict: 'bonne' }]);
@@ -102,6 +110,23 @@ recents = [1, 2, 3, 4, 5].map((i) => ({ id: i }));
 await cas('6e envoi dans la même minute', retour, { method: 'POST', body: BON }, 429);
 recents = [];
 
+// Trois copies du même retour ont été relevées en base le 2026-09-20. Le
+// doublon se reconnaît au contenu, pas au rythme : un rechargement de page
+// passe sous le seuil de débit tout en renvoyant le même texte.
+console.log('\n── /api/retour : les doublons ──────────────────────────────────');
+memes = [{ id: 'deja-la' }];
+inseres = [];
+const dbl = await cas('retour identique récent', retour, { method: 'POST', body: BON }, 201);
+verifier('le doublon est signalé comme tel', dbl.corps.doublon === true,
+  JSON.stringify(dbl.corps));
+verifier('rien n’est réécrit en base', inseres.length === 0,
+  `${inseres.length} insertion(s)`);
+memes = [];
+await cas('retour différent, même auteur', retour,
+  { method: 'POST', body: { ...BON, texte_source: 'Autre phrase' } }, 201);
+verifier('un retour distinct passe', inseres.length === 1,
+  `${inseres.length} insertion(s)`);
+
 console.log('\n── /api/admin : l’accès ────────────────────────────────────────');
 const AUTH = { 'x-admin-mdp': 'secret-de-test' };
 await cas('sans mot de passe', admin, { method: 'GET', headers: {} }, 401);
@@ -112,8 +137,24 @@ await cas('PATCH identifiant invalide', admin,
   { method: 'PATCH', headers: AUTH, body: { id: '../../tout', statut: 'valide' } }, 400);
 await cas('PATCH statut inventé', admin,
   { method: 'PATCH', headers: AUTH, body: { id: 'a1b2c3d4-1111-2222-3333-444455556666', statut: 'super' } }, 400);
+const UN_ID = 'a1b2c3d4-1111-2222-3333-444455556666';
+patchs = [];
 await cas('PATCH correct', admin,
-  { method: 'PATCH', headers: AUTH, body: { id: 'a1b2c3d4-1111-2222-3333-444455556666', statut: 'valide' } }, 200);
+  { method: 'PATCH', headers: AUTH, body: { id: UN_ID, statut: 'valide' } }, 200);
+verifier('un rejet simple ne touche pas à la correction',
+  !('correction' in patchs[0]), JSON.stringify(patchs[0]));
+
+// Un contributeur propose parfois deux variantes dans un seul champ. La
+// correction doit donc pouvoir être amendée au moment de valider.
+patchs = [];
+await cas('PATCH avec correction amendée', admin,
+  { method: 'PATCH', headers: AUTH,
+    body: { id: UN_ID, statut: 'valide', correction: 'Mi neldii ma ɓataakuru' } }, 200);
+verifier('la correction amendée est bien écrite',
+  patchs[0].correction === 'Mi neldii ma ɓataakuru', JSON.stringify(patchs[0]));
+await cas('PATCH correction trop longue', admin,
+  { method: 'PATCH', headers: AUTH,
+    body: { id: UN_ID, statut: 'valide', correction: 'a'.repeat(2001) } }, 400);
 await cas('DELETE sans identifiant', admin, { method: 'DELETE', headers: AUTH }, 400);
 await cas('DELETE identifiant fabriqué', admin,
   { method: 'DELETE', headers: AUTH, query: { id: 'eq.*' } }, 400);

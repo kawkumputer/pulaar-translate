@@ -183,6 +183,12 @@
     </section>
   </main>
 
+  <!-- Vercel Web Analytics : sans cookie et sans donnée personnelle, donc pas
+       de bandeau de consentement à afficher. Le script n'est servi que si
+       Web Analytics est activé dans le tableau de bord ; sinon ce chargement
+       échoue silencieusement, sans rien casser. -->
+  <script defer src="/_vercel/insights/script.js"></script>
+
   <footer>
     <p>
       <span data-i18n="pied">Projet ouvert autour du pulaar du Fuuta Tooro. Les modèles sont publiés</span>
@@ -291,8 +297,17 @@ function masquerRetour() {
   for (const b of retour.querySelectorAll('.retour-choix button')) b.disabled = false;
 }
 
+// `envoiEnCours` bloque le second clic. Sans lui, un double clic sur « Envoyer »
+// partait deux fois : trois copies du même retour ont été observées en base le
+// 2026-09-20. Le serveur écarte aussi les doublons, mais le faire ici évite
+// l'aller-retour.
+let envoiEnCours = false;
+
 async function envoyerRetour(verdict, correction) {
-  if (!juge) return;
+  if (!juge || envoiEnCours) return;
+  envoiEnCours = true;
+  let reussi = false;
+  for (const b of retour.querySelectorAll('button')) b.disabled = true;
   retourEtat.textContent = '';
   retourEtat.className = 'retour-etat';
   try {
@@ -317,10 +332,18 @@ async function envoyerRetour(verdict, correction) {
     retourEtat.textContent = t('retour.merci', langue);
     retourEtat.className = 'retour-etat ok';
     retourForm.hidden = true;
-    for (const b of retour.querySelectorAll('.retour-choix button')) b.disabled = true;
+    reussi = true;
   } catch (err) {
     retourEtat.textContent = t('etat.reseau', langue);
     retourEtat.className = 'retour-etat erreur';
+  } finally {
+    envoiEnCours = false;
+    // Les boutons ne redeviennent cliquables qu'en cas d'echec, pour permettre
+    // de reessayer. Apres un envoi reussi ils restent inertes : c'est ce qui
+    // empeche le meme retour de repartir d'un clic.
+    if (!reussi) {
+      for (const b of retour.querySelectorAll('button')) b.disabled = false;
+    }
   }
 }
 

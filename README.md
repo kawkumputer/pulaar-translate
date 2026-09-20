@@ -126,6 +126,19 @@ Les retours jugés « bonne » sont exportés eux aussi : ils confirment une sor
 du modèle, ce qui est de la donnée valide. Un « mauvaise » sans correction ne
 l'est pas — il signale un trou, il ne le comble pas.
 
+### La correction s'amende avant d'être validée
+
+Un contributeur propose parfois deux variantes dans un seul champ :
+
+```
+"Mi neldii ma ɓataakuru he whatsapp" ou "Mi neldi on ɓataakuru he whatsapp"
+```
+
+Exportée telle quelle, cette ligne entrerait dans le corpus avec ses guillemets
+et son « ou ». Le champ est donc modifiable dans la page de dépouillement, et
+l'aperçu de la paire `{fr, pul}` se recalcule à chaque frappe : trancher à la
+relecture coûte moins cher que nettoyer un corpus après coup.
+
 ### Rejeter n'est pas supprimer
 
 **Rejeter** garde la ligne en base, simplement hors de la vue de travail. Même
@@ -194,6 +207,17 @@ npm run i18n     # ce qu'il reste à remplir dans l'objet `pul`
 ```
 
 Quand tout est rempli, passer `PULAAR_PRET` à `true` : rien d'autre à changer.
+
+## Fréquentation
+
+**Vercel Web Analytics**, chargé par `/_vercel/insights/script.js` depuis
+`index.html`. Sans cookie et sans donnée personnelle, donc **aucun bandeau de
+consentement à afficher**.
+
+Le script n'est servi que si Web Analytics est activé dans le tableau de bord
+Vercel (onglet *Analytics* → *Enable*). Sans cela, la requête échoue
+silencieusement et la page fonctionne normalement — c'est voulu : la mesure
+d'audience ne doit jamais pouvoir casser le service.
 
 ## Sécurité
 
