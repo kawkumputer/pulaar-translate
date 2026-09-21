@@ -29,9 +29,10 @@ export const TEXTES = {
     'titre':            'Pulaar-Translate — Traducteur Français ↔ Pulaar',
     'accroche':         'Dialecte Fuuta Tooro · modèle NLLB affiné sur un corpus validé par des locuteurs natifs',
 
-    // Les fondateurs restent en tête, les contributions passent en pied de
-    // page : la liste s'allongera, et un en-tête qui grossit à chaque nom
-    // finirait par repousser le champ de saisie hors de l'écran sur téléphone.
+    // Les deux lignes vivent dans l'en-tête, l'une sous l'autre : ceux qui ont
+    // confié leurs ouvrages en pulaar au projet doivent se lire d'emblée, pas
+    // après avoir fait défiler la page. La seconde ligne est composée un peu
+    // plus petite pour que le bloc reste léger à mesure que la liste grandit.
     'credits.fonde':    'Fondé par Hamath Kane et Abou Sy',
     'credits.avec':     'Contributions de Bocar Amadou Ba (ARPRIM), Alassane Mountaga Sall « Dembel », Hamet Amadou Ly et Bacca Bah, sur le traducteur comme sur le modèle de langue en développement.',
     // Mesuré le 2026-09-19 sur dix traductions, après le chargement du modèle

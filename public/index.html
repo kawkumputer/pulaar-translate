@@ -46,6 +46,9 @@
   h1{font-size:1.65rem; margin:0 0 6px; letter-spacing:-.02em}
   .sous{color:var(--doux); margin:0 0 4px}
   .credits{color:var(--doux); font-size:.85rem; margin:10px 0 0}
+  /* La liste des contributeurs suit les fondateurs : resserree et un cran plus
+     petite, pour que le bloc reste leger a mesure qu'elle s'allonge. */
+  .credits + .credits{margin-top:3px; font-size:.8rem; max-width:62ch}
   .langues{display:flex; gap:6px; flex-shrink:0}
   .langues button{
     font:inherit; font-size:.82rem; font-weight:600; padding:6px 13px;
@@ -122,6 +125,7 @@
         <h1 data-i18n="titre">Pulaar-Translate — Traducteur Français ↔ Pulaar</h1>
         <p class="sous" data-i18n="accroche">Dialecte Fuuta Tooro · modèle NLLB affiné sur un corpus validé par des locuteurs natifs</p>
         <p class="credits" data-i18n="credits.fonde">Fondé par Hamath Kane et Abou Sy</p>
+        <p class="credits" data-i18n="credits.avec">Contributions de Bocar Amadou Ba (ARPRIM), Alassane Mountaga Sall « Dembel », Hamet Amadou Ly et Bacca Bah, sur le traducteur comme sur le modèle de langue en développement.</p>
       </div>
       <nav class="langues" id="langues"></nav>
     </div>
@@ -193,7 +197,6 @@
       <a href="https://huggingface.co/kawkumputer" data-i18n="pied.lien">sur Hugging Face</a>.
       <span data-i18n="pied.suite">Les traductions automatiques comportent des erreurs : faites-les vérifier par un locuteur avant tout usage important.</span>
     </p>
-    <p data-i18n="credits.avec">Contributions de Bocar Amadou Ba (ARPRIM), Alassane Mountaga Sall « Dembel », Hamet Amadou Ly et Bacca Bah, sur le traducteur comme sur le modèle de langue en développement.</p>
     <p>
       <span data-i18n="pied.contact">Une question, une remarque, envie de contribuer ?</span>
       <a href="mailto:pulaartranslate@gmail.com">pulaartranslate@gmail.com</a>
