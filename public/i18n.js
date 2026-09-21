@@ -37,9 +37,10 @@ export const TEXTES = {
     'credits.avec':     'Contributions de Bocar Amadou Ba (ARPRIM), Alassane Mountaga Sall « Dembel », Hamet Amadou Ly et Bacca Bah, sur le traducteur comme sur le modèle de langue en développement.',
     // Mesuré le 2026-09-19 sur dix traductions, après le chargement du modèle
     // en float16 : médiane 0,7 s, maximum 4,8 s sur le tout premier appel.
-    // Le chiffre annoncé doit rester au-dessus du mesuré, jamais l'inverse :
-    // c'est le doute sur une panne qui fait fermer l'onglet.
-    'avis':             'Le modèle tourne sur un GPU partagé : comptez moins de deux secondes par traduction. La première après une période creuse peut demander jusqu’à une minute, le temps que le service sorte de veille.',
+    // Cinq secondes couvrent donc le pire cas observé, là où « deux » le
+    // dépassait. Le chiffre annoncé doit rester au-dessus du mesuré, jamais
+    // l'inverse : c'est le doute sur une panne qui fait fermer l'onglet.
+    'avis':             'Le modèle tourne sur un GPU partagé : comptez moins de cinq secondes par traduction. La première après une période creuse peut demander jusqu’à une minute, le temps que le service sorte de veille.',
     'label.source':     'Texte source',
     'label.traduction': 'Traduction',
     'label.direction':  'Direction',

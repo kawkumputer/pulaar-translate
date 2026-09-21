@@ -58,9 +58,10 @@
   .langues button[aria-pressed="true"]{
     background:var(--accent-clair); color:var(--accent); border-color:transparent;
   }
+  /* Sous la grille, avec le meme espacement qu'entre les deux cartes. */
   .avis{
     background:var(--alerte-fond); color:var(--alerte); border:1px solid currentColor;
-    border-radius:10px; padding:11px 14px; font-size:.88rem; margin:18px 0 0;
+    border-radius:10px; padding:11px 14px; font-size:.88rem; margin:16px 0 0;
   }
   .grille{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:22px}
   @media (max-width:720px){ .grille{grid-template-columns:1fr} }
@@ -129,7 +130,6 @@
       </div>
       <nav class="langues" id="langues"></nav>
     </div>
-    <p class="avis">⏳ <span data-i18n="avis">Le modèle tourne sur un GPU partagé : comptez moins de deux secondes par traduction. La première après une période creuse peut demander jusqu’à une minute, le temps que le service sorte de veille.</span></p>
   </header>
 
   <main class="grille">
@@ -184,6 +184,12 @@
       </div>
     </section>
   </main>
+
+  <!-- L'avis de délai vit sous la traduction, pas en tête : il n'est utile
+       qu'une fois qu'on attend une réponse. En haut de page, il occupait la
+       place avant même qu'on ait tapé quoi que ce soit, et annonçait une
+       lenteur là où le visiteur cherchait le champ de saisie. -->
+  <p class="avis">⏳ <span data-i18n="avis">Le modèle tourne sur un GPU partagé : comptez moins de cinq secondes par traduction. La première après une période creuse peut demander jusqu’à une minute, le temps que le service sorte de veille.</span></p>
 
   <!-- Vercel Web Analytics : sans cookie et sans donnée personnelle, donc pas
        de bandeau de consentement à afficher. Le script n'est servi que si
