@@ -85,20 +85,29 @@ export const TEXTES = {
     'retour.echec':     'L’envoi a échoué. Réessayez.',
   },
 
+  // Traductions fournies par Abou Sy le 2026-09-23, reprises telles quelles.
+  // Trois retouches seulement, toutes signalées en commentaire : elles portent
+  // sur un nom propre vérifiable et sur la typographie, jamais sur la langue.
   pul: {
-    'doc.titre':        '',
-    'titre':            '',
-    'accroche':         '',
-    'credits.fonde':    '',
-    'credits.avec':     '',
-    'avis':             '',
-    'label.source':     '',
-    'label.traduction': '',
+    // Abou n'a donné qu'un titre ; il sert aussi pour l'onglet du navigateur.
+    'doc.titre':        'Pulaar-Translate (Fir-Pulaar) — Pirowol Farayse ↔ Pulaar',
+    'titre':            'Pulaar-Translate (Fir-Pulaar) — Pirowol Farayse ↔ Pulaar',
+    'accroche':         'Ngaddiini Fuuta Tooro · Model NLLB ɓuccito fawiingo dow laral haalooɓe jibinannde maggal.',
+    'credits.fonde':    'Feltuɓe : Hammaat Kan e Abuu Sih.',
+    // Deux retouches ici. « APPRIM » corrigé en « ARPRIM » : c'est le nom réel
+    // de l'association, celui que porte la ligne française — deux sigles
+    // différents sur la même page seraient une faute visible. Et les guillemets
+    // droits passés en chevrons, pour s'accorder au reste du site.
+    'credits.avec':     'Wallidiiɓe Bokara Aamadu Bah (ARPRIM), Alasan Muntagaa Sal « Dembel », Hammee Aamadu Lih, Bacca Bah e Umar Elhajji Caam, to bannge firo e to mbaadi loosɗingol.',
+    // Espace double retirée dans « haa  hojom ».
+    'avis':             'Model o yiilotoo ko dow GPU feccito : limee les hojomaaji joy kala firo. Adiingo ngo caggal daawal ina waawi yahde haa hojom, fotde ko gollorgal ngal ina seerta e faɗɗere.',
+    'label.source':     'Winndannde iwdi (lasli).',
+    'label.traduction': 'Firo',
     'label.direction':  '',
     'label.langue':     'Ɗemngal',          // quotidien : Langue → ɗemngal
     'placeholder':      '',
-    'clavier.aide':     '',
-    'retour.orthographe': '',
+    'clavier.aide':     'So tawii tappirgal mon alaa ɓ ɗ ŋ ñ ƴ ? Memee ɗee alkule ngal waawde lommbude ɗe heen.',
+    'retour.orthographe': 'Mbinndiree Pulaar alkule laaɓtuɗe. Ina saatoree ɓ ɗ ŋ ñ ƴ, so tawii on lomtiniri b d n y, ɗuum waawataa wallitde saato model o.',
     'sortie.vide':      '',
     'dir.fr_pul':       '',
     'dir.pul_fr':       '',
@@ -114,20 +123,20 @@ export const TEXTES = {
     'pied.suite':       '',
     'pied.contact':     '',
 
-    // « Oui » et « non » ne figurent pas dans les 8 080 paires validées, et
-    // « merci » y apparaît sous cinq formes concurrentes. Rien n'est rempli
-    // ici tant que ce n'est pas arbitré : le repli sur le français vaut mieux
-    // qu'un pulaar inventé.
-    'retour.question':  '',
+    'retour.question':  'Mbele ngoo firo ango regii ?',
+    // « Oui » seul ne figure pas dans la liste d'Abou, alors que « Alaa » —
+    // non — y est. Laisser le repli français plutôt que de déduire la paire.
     'retour.oui':       '',
-    'retour.non':       '',
-    'retour.correction': '',
+    'retour.non':       'Alaa, miɗo hollita ko ɓuri.',
+    'retour.correction': 'Firo moƴƴo ngo',
     'retour.exemple':   '',
-    'retour.fuuta':     '',
+    // Abou a donné ces deux phrases d'un bloc ; elles sont séparées ici parce
+    // que le formulaire les affiche l'une après l'autre.
+    'retour.fuuta':     'Model o jangata ko Pulaar Fuuta Tooro.',
     'retour.nom':       '',
     'retour.envoyer':   '',
-    'retour.avis':      '',
-    'retour.merci':     '',
+    'retour.avis':      'So on ngaddii ballal mon ma ɗum waaw wallitoyde ɓuccitagol model o. Hoto mbaɗee heen innaataare mon heertinde.',
+    'retour.merci':     'Jaaraama, ɗum loowiima.',
     'retour.vide':      '',
     'retour.echec':     '',
   },
