@@ -87,6 +87,33 @@ node -e "import('@gradio/client').then(async ({Client}) => {
 La sortie doit lister un endpoint nommé `/translate` prenant deux entrées
 (le texte, la direction).
 
+## Clavier pulaar
+
+Beaucoup de contributeurs écrivent le pulaar sans ses lettres propres, faute
+de clavier : `Mido jogii` au lieu de `Miɗo jogii`. Une correction ainsi
+orthographiée ne peut pas servir à corriger le modèle.
+
+Cinq touches et leurs capitales apparaissent donc **sous le champ qui attend du
+pulaar** — le texte source quand la direction est `pul → fr`, la correction
+quand elle est `fr → pul`. Ailleurs elles resteraient dans le chemin.
+
+L'ordre suit la fréquence relevée sur les 8 080 paires du corpus :
+
+| ɗ | ɓ | ñ | ƴ | ŋ |
+|---|---|---|---|---|
+| 5 823 | 3 788 | 978 | 786 | 380 |
+
+Les capitales servent aussi — 466 occurrences, surtout en début de phrase —
+d'où les dix touches plutôt que cinq.
+
+```bash
+node tools/test-clavier.mjs     # inclus dans npm test
+```
+
+Le test exerce l'arithmétique du curseur (insertion au milieu, remplacement
+d'une sélection, respect de `maxlength`) : une erreur d'indice y est invisible
+à la relecture et se manifeste par un texte mélangé chez le contributeur.
+
 ## Retours des visiteurs
 
 Sous chaque traduction, le visiteur répond « cette traduction est-elle

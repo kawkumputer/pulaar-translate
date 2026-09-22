@@ -46,6 +46,11 @@ export const TEXTES = {
     'label.direction':  'Direction',
     'label.langue':     'Langue de l’interface',
     'placeholder':      'Saisissez le texte à traduire…',
+
+    // Beaucoup écrivent le pulaar sans ses lettres propres, faute de clavier.
+    // Dire pourquoi elles comptent porte plus loin que « écrivez correctement ».
+    'clavier.aide':     'Votre clavier n’a pas ɓ ɗ ŋ ñ ƴ ? Touchez ces lettres pour les insérer.',
+    'retour.orthographe': 'Écrivez le pulaar avec ses lettres propres. Une correction où ɓ ɗ ŋ ñ ƴ sont remplacés par b, d, n, y ne peut pas servir à corriger le modèle.',
     'sortie.vide':      'La traduction s’affichera ici.',
     'dir.fr_pul':       'Français → Pulaar',
     'dir.pul_fr':       'Pulaar → Français',
@@ -92,6 +97,8 @@ export const TEXTES = {
     'label.direction':  '',
     'label.langue':     'Ɗemngal',          // quotidien : Langue → ɗemngal
     'placeholder':      '',
+    'clavier.aide':     '',
+    'retour.orthographe': '',
     'sortie.vide':      '',
     'dir.fr_pul':       '',
     'dir.pul_fr':       '',

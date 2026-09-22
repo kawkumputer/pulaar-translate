@@ -108,6 +108,21 @@
   .duo{display:grid; grid-template-columns:1fr 1fr; gap:12px}
   @media (max-width:520px){ .duo{grid-template-columns:1fr} }
   .mention{font-size:.78rem; color:var(--doux); margin:0}
+
+  /* Clavier pulaar ---------------------------------------------------------
+     Beaucoup ecrivent le pulaar sans ses lettres propres, faute de clavier :
+     les touches ne s'affichent que lorsque le champ attend du pulaar, pour ne
+     pas encombrer quand on saisit du francais. */
+  .clavier{margin-top:10px}
+  .clavier-aide{font-size:.78rem; color:var(--doux); margin:0 0 7px}
+  .touches{display:flex; gap:6px; flex-wrap:wrap}
+  .touches button{
+    font:inherit; font-size:1.05rem; font-weight:600; line-height:1;
+    padding:8px 0; min-width:40px; text-align:center;
+    background:var(--accent-clair); color:var(--accent);
+    border:1px solid transparent; border-radius:8px;
+  }
+  .touches button:hover{border-color:var(--accent)}
   .retour-etat{font-size:.85rem; margin:10px 0 0; min-height:1.3em; color:var(--doux)}
   .retour-etat.ok{color:var(--accent)}
   .retour-etat.erreur{color:var(--alerte)}
@@ -137,6 +152,13 @@
       <label for="source" data-i18n="label.source">Texte source</label>
       <textarea id="source" maxlength="1000" placeholder="Saisissez le texte à traduire…"></textarea>
       <p class="compteur"><span id="compteur">0</span> / 1000</p>
+      <!-- Les touches ne s'affichent que lorsque le champ attend du pulaar.
+           Les boutons eux-memes sont poses par le script, depuis une liste
+           unique, pour qu'ils ne divergent pas d'un endroit a l'autre. -->
+      <div class="clavier" id="clavier-source" hidden>
+        <p class="clavier-aide" data-i18n="clavier.aide">Votre clavier n’a pas ɓ ɗ ŋ ñ ƴ ? Touchez ces lettres pour les insérer.</p>
+        <div class="touches"></div>
+      </div>
       <div class="barre">
         <div>
           <label for="direction" data-i18n="label.direction">Direction</label>
@@ -168,6 +190,10 @@
           <div>
             <label for="retour-correction" data-i18n="retour.correction">La bonne traduction</label>
             <textarea id="retour-correction" maxlength="2000" placeholder="Écrivez ici la traduction juste…"></textarea>
+            <div class="clavier" id="clavier-correction" hidden>
+              <p class="clavier-aide" data-i18n="retour.orthographe">Écrivez le pulaar avec ses lettres propres. Une correction où ɓ ɗ ŋ ñ ƴ sont remplacés par b, d, n, y ne peut pas servir à corriger le modèle.</p>
+              <div class="touches"></div>
+            </div>
           </div>
           <div>
             <label for="retour-nom" data-i18n="retour.nom">Votre nom (facultatif)</label>
@@ -270,6 +296,54 @@ if (PULAAR_PRET) {
   barreLangues.hidden = true;
 }
 
+// ── Clavier pulaar ────────────────────────────────────────────────────────
+// Les cinq lettres propres au pulaar, capitales comprises, dans l'ordre de
+// frequence mesure sur les 8 080 paires du corpus : ɗ 5823, ɓ 3788, ñ 978,
+// ƴ 786, ŋ 380. Les capitales servent aussi — 466 occurrences, surtout en
+// debut de phrase — donc elles figurent, apres les minuscules.
+const LETTRES = ['ɗ', 'ɓ', 'ñ', 'ƴ', 'ŋ', 'Ɗ', 'Ɓ', 'Ñ', 'Ƴ', 'Ŋ'];
+
+function inserer(champ, lettre) {
+  // L'affectation de `value` contourne maxlength : on verifie donc a la main,
+  // sinon les touches permettraient de depasser la limite que le clavier
+  // respecte.
+  const max = Number(champ.maxLength);
+  if (max > 0 && champ.value.length >= max) return;
+
+  const debut = champ.selectionStart, fin = champ.selectionEnd;
+  champ.value = champ.value.slice(0, debut) + lettre + champ.value.slice(fin);
+  const pos = debut + lettre.length;
+  champ.setSelectionRange(pos, pos);
+  champ.focus();
+  // Le compteur de caracteres et l'apercu ecoutent `input` : sans cet evenement
+  // ils ignoreraient tout ce qui vient des touches.
+  champ.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function poserTouches(idBloc, champ) {
+  const touches = $(idBloc).querySelector('.touches');
+  for (const lettre of LETTRES) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = lettre;
+    b.setAttribute('aria-label', `Insérer ${lettre}`);
+    // mousedown plutot que click, avec preventDefault : sans cela le champ
+    // perd le focus au moment du clic, et la position du curseur avec lui.
+    b.addEventListener('mousedown', (e) => { e.preventDefault(); inserer(champ, lettre); });
+    touches.appendChild(b);
+  }
+}
+
+poserTouches('clavier-source', source);
+poserTouches('clavier-correction', $('retour-correction'));
+
+// Le clavier n'a de sens que lorsque le champ attend du pulaar.
+function majClavierSource() {
+  $('clavier-source').hidden = direction.value !== 'pul → fr';
+}
+direction.addEventListener('change', majClavierSource);
+majClavierSource();
+
 // ── Traduction ────────────────────────────────────────────────────────────
 source.addEventListener('input', () => {
   $('compteur').textContent = source.value.length;
@@ -360,6 +434,9 @@ $('retour-non').addEventListener('click', () => {
   retourForm.hidden = false;
   retourEtat.textContent = '';
   retourEtat.className = 'retour-etat';
+  // La correction est en pulaar quand on traduisait vers le pulaar. Dans
+  // l'autre sens elle est en francais : les touches n'auraient rien a y faire.
+  $('clavier-correction').hidden = !juge || juge.direction !== 'fr → pul';
   $('retour-correction').focus();
 });
 retourForm.addEventListener('submit', (e) => {
