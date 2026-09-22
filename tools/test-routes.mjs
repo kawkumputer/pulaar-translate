@@ -22,6 +22,7 @@ let aExporter = []; // ce que renvoie la requête d'export
 let inseres = [];   // ce qui a été écrit
 let supprimes = []; // les URL de suppression réellement envoyées
 let patchs = [];    // les corps de modification réellement envoyés
+let lignes = null;  // la ligne relue avant d'écraser la sortie du modèle
 
 globalThis.fetch = async (url, options) => {
   const u = String(url);
@@ -34,6 +35,11 @@ globalThis.fetch = async (url, options) => {
     return rep([{ id: 'x', statut: 'valide' }]);
   }
   if (options.method === 'DELETE') { supprimes.push(u); return rep(null); }
+  // Lecture faite avant d'écraser la sortie du modèle, pour en garder
+  // l'original. Reconnaissable à sa projection réduite à deux colonnes.
+  if (u.includes('select=traduction_modele,traduction_modele_origine')) {
+    return rep(lignes || []);
+  }
   // La recherche de doublon porte aussi cree_le=gte : elle se distingue de la
   // limitation de débit par le filtre sur le verdict. L'ordre compte donc.
   if (u.includes('verdict=eq.')) return rep(memes);
@@ -144,17 +150,57 @@ await cas('PATCH correct', admin,
 verifier('un rejet simple ne touche pas à la correction',
   !('correction' in patchs[0]), JSON.stringify(patchs[0]));
 
-// Un contributeur propose parfois deux variantes dans un seul champ. La
-// correction doit donc pouvoir être amendée au moment de valider.
+// Les trois textes sont amendables : source tapé avec une faute, deux
+// variantes dans un seul champ, correction bancale. Ce sont eux qui composent
+// la paire exportée.
 patchs = [];
 await cas('PATCH avec correction amendée', admin,
   { method: 'PATCH', headers: AUTH,
     body: { id: UN_ID, statut: 'valide', correction: 'Mi neldii ma ɓataakuru' } }, 200);
 verifier('la correction amendée est bien écrite',
   patchs[0].correction === 'Mi neldii ma ɓataakuru', JSON.stringify(patchs[0]));
+
+patchs = [];
+await cas('PATCH avec texte source amendé', admin,
+  { method: 'PATCH', headers: AUTH,
+    body: { id: UN_ID, statut: 'valide', texte_source: 'Aɗa ŋeli sanne.' } }, 200);
+verifier('le texte source amendé est bien écrit',
+  patchs[0].texte_source === 'Aɗa ŋeli sanne.', JSON.stringify(patchs[0]));
+
+// La sortie du modèle est la seule trace de ce que v11 a produit : elle doit
+// être conservée avant d'être écrasée, et une seule fois.
+patchs = [];
+lignes = [{ traduction_modele: 'Tu as bien dormi.', traduction_modele_origine: null }];
+await cas('PATCH avec sortie du modèle amendée', admin,
+  { method: 'PATCH', headers: AUTH,
+    body: { id: UN_ID, statut: 'valide', traduction_modele: 'Tu es très intelligent.' } }, 200);
+verifier('la sortie d’origine est conservée',
+  patchs[0].traduction_modele_origine === 'Tu as bien dormi.', JSON.stringify(patchs[0]));
+
+patchs = [];
+lignes = [{ traduction_modele: 'Tu es très intelligent.',
+            traduction_modele_origine: 'Tu as bien dormi.' }];
+await cas('2e retouche de la sortie', admin,
+  { method: 'PATCH', headers: AUTH,
+    body: { id: UN_ID, statut: 'valide', traduction_modele: 'Tu es bien intelligent.' } }, 200);
+verifier('l’origine n’est pas réécrite par une version déjà corrigée',
+  !('traduction_modele_origine' in patchs[0]), JSON.stringify(patchs[0]));
+lignes = null;
+
 await cas('PATCH correction trop longue', admin,
   { method: 'PATCH', headers: AUTH,
     body: { id: UN_ID, statut: 'valide', correction: 'a'.repeat(2001) } }, 400);
+await cas('PATCH texte source trop long', admin,
+  { method: 'PATCH', headers: AUTH,
+    body: { id: UN_ID, statut: 'valide', texte_source: 'a'.repeat(1001) } }, 400);
+// texte_source et traduction_modele sont NOT NULL : les vider ferait échouer
+// la requête en base avec un message incompréhensible.
+await cas('PATCH texte source vidé', admin,
+  { method: 'PATCH', headers: AUTH,
+    body: { id: UN_ID, statut: 'valide', texte_source: '   ' } }, 400);
+await cas('PATCH sortie du modèle vidée', admin,
+  { method: 'PATCH', headers: AUTH,
+    body: { id: UN_ID, statut: 'valide', traduction_modele: '' } }, 400);
 await cas('DELETE sans identifiant', admin, { method: 'DELETE', headers: AUTH }, 400);
 await cas('DELETE identifiant fabriqué', admin,
   { method: 'DELETE', headers: AUTH, query: { id: 'eq.*' } }, 400);

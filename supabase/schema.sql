@@ -19,6 +19,12 @@ create table if not exists public.retours (
   direction         text not null check (direction in ('fr → pul', 'pul → fr')),
   traduction_modele text not null,
 
+  -- Les trois textes sont amendables au dépouillement. Celui-ci garde la
+  -- sortie d'origine du modèle : c'est la seule trace de ce qu'il a réellement
+  -- produit, donc le diagnostic qui alimente le lot suivant. Nulle tant que
+  -- `traduction_modele` n'a pas été retouchée.
+  traduction_modele_origine text,
+
   -- Le jugement du visiteur. `correction` reste nullable : signaler qu'une
   -- traduction est fausse sans savoir la corriger est déjà un signal utile.
   verdict           text not null check (verdict in ('bonne', 'mauvaise')),

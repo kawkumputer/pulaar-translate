@@ -73,6 +73,12 @@
     une forme juste dans un autre parler est à rejeter ici.
   </p>
   <p class="sous">
+    Les trois textes sont modifiables avant validation : l’aperçu sous chaque
+    retour montre la paire <code>{fr, pul}</code> qui partira réellement dans le
+    dataset. La sortie d’origine du modèle est conservée si vous la retouchez —
+    c’est elle qui dit où le modèle se trompe.
+  </p>
+  <p class="sous">
     <strong>Rejeter</strong> garde la ligne : la correction ne vaut rien, mais le
     texte source dit qu’un tour de phrase est demandé et que le modèle le rate —
     c’est la feuille de route du lot suivant. <strong>Supprimer</strong> efface
@@ -169,28 +175,51 @@ function carte(r) {
   if (r.contributeur) meta.appendChild(jeton(`par ${r.contributeur}`));
   el.appendChild(meta);
 
+  // Les trois textes sont amendables : un contributeur tape parfois le texte
+  // source avec une faute, propose deux variantes dans un seul champ — « X »
+  // ou « Y » —, ou écrit une correction bancale. Ce sont ces valeurs qui
+  // composent la paire exportée ; les corriger ici coûte moins cher que
+  // nettoyer un corpus après coup.
+  const champs = {};
+  const editable = (cle, titre, valeur, lignes) => {
+    const d = document.createElement('div');
+    d.className = 'bloc';
+    const h = document.createElement('h3');
+    h.textContent = titre;
+    const t = document.createElement('textarea');
+    t.rows = lignes;
+    t.value = valeur || '';
+    champs[cle] = t;
+    d.append(h, t);
+    return d;
+  };
+
   const paire = document.createElement('div');
   paire.className = 'paire';
-  paire.appendChild(bloc('Texte source', r.texte_source));
-  paire.appendChild(bloc('Sortie du modèle', r.traduction_modele));
+  paire.appendChild(editable('texte_source', 'Texte source', r.texte_source, 2));
+  paire.appendChild(editable('traduction_modele', 'Sortie du modèle',
+    r.traduction_modele, 2));
   el.appendChild(paire);
 
-  // La correction est modifiable avant validation. Un contributeur propose
-  // parfois deux variantes dans un seul champ — « X » ou « Y » — qui
-  // entreraient telles quelles dans le dataset. Trancher ici coûte moins cher
-  // que nettoyer le corpus après coup.
-  let champ = null;
-  if (r.verdict === 'mauvaise') {
-    const d = document.createElement('div');
-    d.className = r.correction ? 'bloc propose' : 'bloc';
-    const h = document.createElement('h3');
-    h.textContent = r.correction
-      ? 'Correction proposée — modifiable avant validation'
-      : 'Signalé faux, sans correction — vous pouvez en écrire une';
-    champ = document.createElement('textarea');
-    champ.rows = 2;
-    champ.value = r.correction || '';
-    d.append(h, champ);
+  // Quand la sortie a été retouchée, l'originale reste visible : c'est la seule
+  // trace de ce que le modèle a réellement produit, et donc le diagnostic qui
+  // alimente le lot suivant.
+  if (r.traduction_modele_origine) {
+    const o = document.createElement('p');
+    o.className = 'meta';
+    o.style.marginTop = '-4px';
+    o.textContent = `Sortie d’origine du modèle : ${r.traduction_modele_origine}`;
+    el.appendChild(o);
+  }
+
+  const aCorrection = r.verdict === 'mauvaise';
+  if (aCorrection) {
+    const d = editable('correction',
+      r.correction
+        ? 'Correction proposée — modifiable avant validation'
+        : 'Signalé faux, sans correction — vous pouvez en écrire une',
+      r.correction, 2);
+    if (r.correction) d.className = 'bloc propose';
     el.appendChild(d);
   }
 
@@ -200,39 +229,61 @@ function carte(r) {
   apercu.className = 'meta';
   apercu.style.marginTop = '10px';
   const rendreApercu = () => {
-    const valeur = champ ? champ.value.trim() : r.traduction_modele;
-    if (!valeur) {
-      apercu.textContent = '→ rien à exporter tant qu’il n’y a pas de correction';
+    const source = champs.texte_source.value.trim();
+    const valeur = aCorrection
+      ? champs.correction.value.trim()
+      : champs.traduction_modele.value.trim();
+    if (!source || !valeur) {
+      apercu.textContent = '→ rien à exporter tant que les deux côtés ne sont pas remplis';
       return;
     }
-    const fr = versPulaar ? r.texte_source : valeur;
-    const pul = versPulaar ? valeur : r.texte_source;
+    const fr = versPulaar ? source : valeur;
+    const pul = versPulaar ? valeur : source;
     apercu.textContent = `→ dataset : {"fr": ${JSON.stringify(fr)}, "pul": ${JSON.stringify(pul)}}`;
   };
   rendreApercu();
-  if (champ) champ.addEventListener('input', rendreApercu);
+  for (const t of Object.values(champs)) t.addEventListener('input', rendreApercu);
   el.appendChild(apercu);
 
   const actions = document.createElement('div');
   actions.className = 'rangee';
   actions.style.marginTop = '12px';
+  // Ne voyagent que les champs réellement touchés : envoyer les autres
+  // réécrirait des valeurs identiques, et un simple rejet effacerait au
+  // passage la proposition d'origine.
+  const modifies = () => {
+    const sortie = {};
+    for (const [cle, t] of Object.entries(champs)) {
+      const propre = t.value.trim();
+      if (propre !== (r[cle] || '')) sortie[cle] = propre;
+    }
+    return sortie;
+  };
+
   if (r.statut !== 'valide') {
     actions.appendChild(bouton('Valider', () => {
-      const valeur = champ ? champ.value.trim() : null;
-      // Valider sans correction produirait une ligne que l'export écarterait
+      // Valider avec un côté vide produirait une ligne que l'export écarterait
       // en silence : autant le dire ici.
-      if (champ && !valeur) {
-        return dire('etat-console', 'Écrivez une correction avant de valider.', true);
+      if (!champs.texte_source.value.trim()) {
+        return dire('etat-console', 'Le texte source ne peut pas être vide.', true);
       }
-      changer(r.id, 'valide', valeur);
+      const valeur = aCorrection
+        ? champs.correction.value.trim()
+        : champs.traduction_modele.value.trim();
+      if (!valeur) {
+        return dire('etat-console', aCorrection
+          ? 'Écrivez une correction avant de valider.'
+          : 'La sortie du modèle ne peut pas être vide.', true);
+      }
+      changer(r.id, 'valide', modifies());
     }));
   }
   if (r.statut !== 'rejete') {
-    actions.appendChild(bouton('Rejeter', () => changer(r.id, 'rejete'), true));
+    actions.appendChild(bouton('Rejeter', () => changer(r.id, 'rejete', modifies()), true));
   }
   if (r.statut !== 'nouveau') {
     actions.appendChild(bouton('Remettre à dépouiller',
-      () => changer(r.id, 'nouveau'), true));
+      () => changer(r.id, 'nouveau', modifies()), true));
   }
 
   // Rejeter garde la ligne : sa correction ne vaut rien, mais son texte source
@@ -247,15 +298,6 @@ function carte(r) {
 
   el.appendChild(actions);
   return el;
-}
-
-function bloc(titre, contenu, accent = false) {
-  const d = document.createElement('div');
-  d.className = accent ? 'bloc propose' : 'bloc';
-  const h = document.createElement('h3'); h.textContent = titre;
-  const p = document.createElement('p'); p.textContent = contenu;
-  d.append(h, p);
-  return d;
 }
 
 function bouton(libelle, action, secondaire = false) {
@@ -297,15 +339,11 @@ async function charger() {
   }
 }
 
-async function changer(id, statut, correction) {
+async function changer(id, statut, textes) {
   try {
-    const charge = { id, statut };
-    // Seule une correction réellement amendée voyage : envoyer `undefined`
-    // écraserait la valeur d'origine par null lors d'un simple rejet.
-    if (typeof correction === 'string') charge.correction = correction;
     const rep = await appeler('/api/admin', {
       method: 'PATCH',
-      body: JSON.stringify(charge),
+      body: JSON.stringify({ id, statut, ...(textes || {}) }),
     });
     if (rep.status === 401) return deconnecter();
     if (!rep.ok) {

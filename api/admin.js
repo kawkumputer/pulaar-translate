@@ -23,9 +23,18 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const CHAMPS = [
   'id', 'cree_le', 'texte_source', 'direction', 'traduction_modele',
+  'traduction_modele_origine',
   'verdict', 'correction', 'contributeur', 'modele',
   'statut', 'note_interne',
 ].join(',');
+
+// Textes que le dépouillement peut amender, avec leur longueur maximale.
+// Ce sont exactement les trois valeurs qui composent la paire exportée.
+const MODIFIABLES = {
+  texte_source: 1000,
+  traduction_modele: 3000,
+  correction: 2000,
+};
 
 function autorise(req) {
   const attendu = process.env.ADMIN_MOT_DE_PASSE;
@@ -91,7 +100,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PATCH') {
-      const { id, statut, note_interne, correction } = req.body || {};
+      const corps = req.body || {};
+      const { id, statut } = corps;
       if (!UUID.test(String(id || ''))) {
         return res.status(400).json({ erreur: 'Identifiant invalide.' });
       }
@@ -99,20 +109,43 @@ export default async function handler(req, res) {
         return res.status(400).json({ erreur: 'Statut inconnu.' });
       }
       const champs = { statut };
-      if (typeof note_interne === 'string') {
-        champs.note_interne = note_interne.slice(0, 500).trim() || null;
+      if (typeof corps.note_interne === 'string') {
+        champs.note_interne = corps.note_interne.slice(0, 500).trim() || null;
       }
-      // La correction est amendable au moment du dépouillement. Un contributeur
+
+      // Les trois textes sont amendables au dépouillement. Un contributeur
       // propose parfois deux variantes dans un seul champ — « X » ou « Y » —,
-      // qui entreraient telles quelles dans le dataset. Trancher à la relecture
-      // coûte moins cher que nettoyer un corpus après coup.
-      if (typeof correction === 'string') {
-        const propre = correction.trim();
-        if (propre.length > 2000) {
-          return res.status(400).json({ erreur: 'Correction trop longue.' });
+      // écrit une correction bancale, ou tape le texte source avec une faute.
+      // Trancher à la relecture coûte moins cher que nettoyer un corpus après
+      // coup, et ce sont ces trois valeurs qui composent la paire exportée.
+      for (const [cle, max] of Object.entries(MODIFIABLES)) {
+        if (typeof corps[cle] !== 'string') continue;
+        const propre = corps[cle].trim();
+        if (propre.length > max) {
+          return res.status(400).json({ erreur: `Champ « ${cle} » trop long.` });
         }
-        champs.correction = propre || null;
+        // texte_source et traduction_modele sont NOT NULL en base : les vider
+        // ferait échouer la requête avec un message incompréhensible.
+        if (!propre && cle !== 'correction') {
+          return res.status(400).json({ erreur: `Champ « ${cle} » obligatoire.` });
+        }
+        champs[cle] = propre || null;
       }
+
+      // La sortie du modèle est la seule trace de ce que v11 a réellement
+      // produit sur cette entrée : c'est le diagnostic qui alimente le lot
+      // suivant. Avant de l'écraser, on en garde l'original — une seule fois,
+      // pour que plusieurs retouches successives ne le remplacent pas par une
+      // version déjà corrigée.
+      if (champs.traduction_modele) {
+        const [avant] = await lire('retours',
+          `select=traduction_modele,traduction_modele_origine&id=eq.${id}`);
+        if (avant && avant.traduction_modele !== champs.traduction_modele
+            && !avant.traduction_modele_origine) {
+          champs.traduction_modele_origine = avant.traduction_modele;
+        }
+      }
+
       const maj = await modifier('retours', `id=eq.${id}`, champs);
       return res.status(200).json({ retour: Array.isArray(maj) ? maj[0] : maj });
     }

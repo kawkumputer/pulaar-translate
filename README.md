@@ -126,18 +126,31 @@ Les retours jugés « bonne » sont exportés eux aussi : ils confirment une sor
 du modèle, ce qui est de la donnée valide. Un « mauvaise » sans correction ne
 l'est pas — il signale un trou, il ne le comble pas.
 
-### La correction s'amende avant d'être validée
+### Les trois textes s'amendent avant d'être validés
 
-Un contributeur propose parfois deux variantes dans un seul champ :
+Texte source, sortie du modèle et correction sont modifiables dans la page de
+dépouillement, et l'aperçu de la paire `{fr, pul}` se recalcule à chaque frappe.
+Un contributeur tape parfois le source avec une faute, ou propose deux variantes
+dans un seul champ :
 
 ```
 "Mi neldii ma ɓataakuru he whatsapp" ou "Mi neldi on ɓataakuru he whatsapp"
 ```
 
 Exportée telle quelle, cette ligne entrerait dans le corpus avec ses guillemets
-et son « ou ». Le champ est donc modifiable dans la page de dépouillement, et
-l'aperçu de la paire `{fr, pul}` se recalcule à chaque frappe : trancher à la
-relecture coûte moins cher que nettoyer un corpus après coup.
+et son « ou ». Trancher à la relecture coûte moins cher que nettoyer un corpus
+après coup.
+
+**La sortie d'origine du modèle est conservée.** C'est la seule trace de ce que
+le modèle a réellement produit sur cette entrée — donc le diagnostic qui
+alimente le lot suivant. La corriger pour l'exporter effacerait la preuve de
+l'erreur, alors `traduction_modele_origine` garde la valeur d'avant la première
+retouche, et la page l'affiche sous le champ. Migration :
+[`supabase/migration_2026-09-22_origine.sql`](supabase/migration_2026-09-22_origine.sql),
+à exécuter une fois.
+
+Seuls les champs réellement touchés sont envoyés : un simple rejet ne réécrit
+rien.
 
 ### Rejeter n'est pas supprimer
 
