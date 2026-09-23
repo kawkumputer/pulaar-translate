@@ -15,13 +15,15 @@ export const LANGUES = {
   pul: { etiquette: 'Pulaar',   drapeau: 'PUL' },
 };
 
-// Le sélecteur de langue reste caché tant que le pulaar n'est pas complet.
-// Une interface traduite à 10 % donne l'impression d'un site à moitié cassé,
-// ce qui est pire que de l'assumer en français. Tout le mécanisme de traduction
-// reste en place : il suffira de repasser cette constante à `true`.
+// Le sélecteur de langue reste caché tant que le pulaar n'est pas complet :
+// une interface traduite à moitié donne l'impression d'un site cassé, ce qui
+// est pire que de l'assumer en français.
+//
+// Passé à `true` le 2026-09-24 — les 39 libellés sont traduits par Abou Sy.
+// Repasser à `false` si de nouvelles clés apparaissent sans leur pulaar.
 //
 //     npm run i18n     → ce qu'il reste à remplir
-export const PULAAR_PRET = false;
+export const PULAAR_PRET = true;
 
 export const TEXTES = {
   fr: {
@@ -103,42 +105,47 @@ export const TEXTES = {
     'avis':             'Model o yiilotoo ko dow GPU feccito : limee les hojomaaji joy kala firo. Adiingo ngo caggal daawal ina waawi yahde haa hojom, fotde ko gollorgal ngal ina seerta e faɗɗere.',
     'label.source':     'Winndannde iwdi (lasli).',
     'label.traduction': 'Firo',
-    'label.direction':  '',
+    'label.direction':  'Kuccam',
     'label.langue':     'Ɗemngal',          // quotidien : Langue → ɗemngal
-    'placeholder':      '',
+    // Points de suspension normalises en « … », comme du cote francais.
+    'placeholder':      'Winndu winndannde firateende nde…',
     'clavier.aide':     'So tawii tappirgal mon alaa ɓ ɗ ŋ ñ ƴ ? Memee ɗee alkule ngal waawde lommbude ɗe heen.',
     'retour.orthographe': 'Mbinndiree Pulaar alkule laaɓtuɗe. Ina saatoree ɓ ɗ ŋ ñ ƴ, so tawii on lomtiniri b d n y, ɗuum waawataa wallitde saato model o.',
-    'sortie.vide':      '',
-    'dir.fr_pul':       '',
-    'dir.pul_fr':       '',
-    'btn.traduire':     '',
+    'sortie.vide':      'Firo ngo ko ɗoo yaltata.',
+    // Abou ecrit le tiret la ou le francais porte une fleche. Conserve tel
+    // quel : la fleche est une convention typographique, pas une traduction.
+    'dir.fr_pul':       'Farayse - Pulaar',
+    'dir.pul_fr':       'Pulaar - Farayse',
+    'btn.traduire':     'Pirgol',
     'btn.effacer':      'Moomtu',           // quotidien : Effaces → moomtu
-    'etat.encours':     '',
-    'etat.longue':      '',
+    'etat.encours':     'Firo ngo ina he bolol',
+    'etat.longue':      'Haa jooni ina he bolol… GPU peccitaaɗo o koko loowi, walla tawi gollorgal ngal ko ko ɗifti',
     'etat.termine':     'Joofii.',          // ARPRIM informatique : Terminé → Joofii
-    'etat.echec':       '',
-    'etat.reseau':      '',
-    'pied':             '',
-    'pied.lien':        '',
-    'pied.suite':       '',
-    'pied.contact':     '',
+    'etat.echec':       'Firo ngo jaccii',
+    'etat.reseau':      'Ceŋagol ngol newotaako. Ƴeewtindo seŋornde weeyo kadi ƴeewtindo-ɗaa',
+    // Abou a rendu ces deux cles d'un seul tenant. La phrase est coupee par le
+    // lien vers Hugging Face : « nder Hugging Face » porte le lien, comme
+    // « sur Hugging Face » du cote francais.
+    'pied':             'Eɓɓoore udditiinde ko yowitii he pulaar Fuuta Tooro. Modelaaji ɗi ina caaktaa',
+    'pied.lien':        'nder Hugging Face',
+    'pied.suite':       'Firooji otomatik ɗi ina coomi juumreeji ; yo kaaloowo ɗemgal ngal ƴeewtindo ɗum, ko adii kala kuutoragol paayodinngol',
+    'pied.contact':     'Naamnal, Teskuya, Aɗa muuyi addude ballal ?',
 
     'retour.question':  'Mbele ngoo firo ango regii ?',
-    // « Oui » seul ne figure pas dans la liste d'Abou, alors que « Alaa » —
-    // non — y est. Laisser le repli français plutôt que de déduire la paire.
-    'retour.oui':       '',
+    'retour.oui':       'Eey',
     'retour.non':       'Alaa, miɗo hollita ko ɓuri.',
     'retour.correction': 'Firo moƴƴo ngo',
-    'retour.exemple':   '',
+    // Espace double retiree dans « ɗoo  firo ».
+    'retour.exemple':   'Winndu ɗoo firo moƴƴo ngo.',
     // Abou a donné ces deux phrases d'un bloc ; elles sont séparées ici parce
     // que le formulaire les affiche l'une après l'autre.
     'retour.fuuta':     'Model o jangata ko Pulaar Fuuta Tooro.',
-    'retour.nom':       '',
-    'retour.envoyer':   '',
+    'retour.nom':       'Innde ma (Waɗɗaaki).',
+    'retour.envoyer':   'Nuldu',
     'retour.avis':      'So on ngaddii ballal mon ma ɗum waaw wallitoyde ɓuccitagol model o. Hoto mbaɗee heen innaataare mon heertinde.',
     'retour.merci':     'Jaaraama, ɗum loowiima.',
-    'retour.vide':      '',
-    'retour.echec':     '',
+    'retour.vide':      'Hollit firo moƴƴo ngo ko adii nuldugol',
+    'retour.echec':     'Nuldal ngal jaccii. Waɗtu.',
   },
 };
 
