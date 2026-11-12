@@ -9,13 +9,18 @@
 -- pulaar), avec une correction facultative. La correction est écrite par un
 -- locuteur : c'est de la matière d'entraînement humaine.
 --
+-- L'app (HaalPulaar) n'a pas de compte pour l'instant : chaque échange porte
+-- l'empreinte salée de l'identifiant d'appareil (jamais l'identifiant brut).
+-- La colonne utilisateur attend les comptes, plus tard.
+--
 -- Le quota du chat utilise la table usage_quotidien et consommer_quota de la
--- migration du 2026-11-11, avec ses propres clés (chat:u:<uuid>).
+-- migration du 2026-11-11, avec ses propres clés (chat:d:<empreinte>, chat:tout).
 
 create table if not exists public.conversations_llm (
   id           uuid primary key,
   cree_le      timestamptz not null default now(),
-  utilisateur  uuid not null,
+  appareil     text not null,
+  utilisateur  uuid,
   conversation uuid not null,
   tour         int  not null default 0,
   mode         text not null check (mode in ('conv', 'fr', 'pul')),
@@ -34,6 +39,8 @@ create table if not exists public.conversations_llm (
 
 create index if not exists conversations_llm_conversation
   on public.conversations_llm (conversation, tour);
+create index if not exists conversations_llm_appareil
+  on public.conversations_llm (appareil);
 create index if not exists conversations_llm_cree_le
   on public.conversations_llm (cree_le);
 

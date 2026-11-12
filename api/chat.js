@@ -1,11 +1,17 @@
 // Route serverless Vercel : relais entre l'app de test de l'assistant (LLM
 // PulaarLLM) et son Inference Endpoint Hugging Face.
 //
-// Ce n'est PAS un service public : seuls les comptes listés dans
-// CHAT_UTILISATEURS (uuid Supabase, séparés par des virgules) y ont accès.
-// L'endpoint est payé à l'heure d'allumage ; un quota journalier à part
-// (clé chat:u:<uuid>, QUOTA_CHAT) sert de garde-fou. Le quota du traducteur
-// n'est pas touché.
+// Ce n'est PAS un service public. L'app HaalPulaar n'est installée que par
+// TestFlight (test interne) ou à la main sur Android, sans compte pour
+// l'instant. Elle s'identifie par :
+//   - une clé d'accès commune (en-tête X-Cle-Assistant = CHAT_CLE) ;
+//   - un identifiant d'appareil tiré au hasard (X-Appareil), dont on ne garde
+//     qu'une empreinte salée.
+// La clé est dans l'app : quelqu'un qui démonte l'app peut la lire. Le
+// vrai garde-fou du coût est donc le quota, par appareil (QUOTA_CHAT) ET pour
+// tous les appareils ensemble (QUOTA_CHAT_TOTAL), sur des clés chat:… à part :
+// le quota du traducteur n'est pas touché. Changer CHAT_CLE dans Vercel coupe
+// l'accès à toutes les copies de l'app.
 //
 // Deux actions, sur la même route pour ne compter qu'une fonction Vercel :
 //   envoyer (défaut) : { mode, message, historique, chaud, conversation, tour }
@@ -20,7 +26,7 @@
 
 import crypto from 'node:crypto';
 import {
-  configure, inserer, modifier, rpc, jetonDe, utilisateurDuJeton,
+  configure, inserer, modifier, rpc, hacher, memeSecret,
 } from './_supabase.js';
 import { rendre } from './_quota.js';
 
@@ -29,19 +35,14 @@ const NOTES = new Set(['juste', 'faux', 'invente', 'pas_pulaar']);
 const MAX_CARACTERES = 1000;
 const MAX_HISTORIQUE = 6; // le handler n'en garde pas plus
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Même format que l'identifiant d'appareil de Pulaar Translate.
+const APPAREIL_VALIDE = /^[A-Za-z0-9_-]{16,64}$/;
 // Au-delà, la fonction Vercel (maxDuration 60) serait coupée sans réponse.
 const DELAI_ENDPOINT_MS = 50_000;
 
 function entier(nom, defaut) {
   const v = Number.parseInt(process.env[nom] ?? '', 10);
   return Number.isFinite(v) && v >= 0 ? v : defaut;
-}
-
-function autorises() {
-  return new Set(
-    String(process.env.CHAT_UTILISATEURS || '')
-      .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
-  );
 }
 
 function texteValide(t, max = MAX_CARACTERES) {
@@ -89,7 +90,7 @@ async function appelerEndpoint(entree) {
   }
 }
 
-async function envoyer(req, res, user) {
+async function envoyer(req, res, appareil) {
   const {
     mode = 'conv', message, historique = [], chaud = false, conversation, tour = 0,
   } = req.body || {};
@@ -107,15 +108,20 @@ async function envoyer(req, res, user) {
     return res.status(503).json({ erreur: "L'assistant n'est pas encore branché.", code: 'non_configure' });
   }
 
-  // Quota à part du traducteur, et seulement après la validation.
+  // Quota à part du traducteur, et seulement après la validation : par
+  // appareil, et pour tous les appareils ensemble (le coût de l'endpoint).
   const QUOTA_CHAT = entier('QUOTA_CHAT', 300);
-  const cles = [`chat:u:${user.id}`];
+  const QUOTA_CHAT_TOTAL = entier('QUOTA_CHAT_TOTAL', 500);
+  const cles = [`chat:d:${appareil}`, 'chat:tout'];
   let restant = null;
   try {
-    const r = await rpc('consommer_quota', { p_cles: cles, p_limites: [QUOTA_CHAT] });
+    const r = await rpc('consommer_quota', { p_cles: cles, p_limites: [QUOTA_CHAT, QUOTA_CHAT_TOTAL] });
     if (typeof r === 'number' && r < 0) {
+      const total = r === -2;
       return res.status(429).json({
-        erreur: `Les ${QUOTA_CHAT} messages du jour sont utilisés. Le compteur repart à zéro à minuit (UTC).`,
+        erreur: total
+          ? `Les ${QUOTA_CHAT_TOTAL} messages du jour (tous appareils) sont utilisés. Le compteur repart à zéro à minuit (UTC).`
+          : `Les ${QUOTA_CHAT} messages du jour sont utilisés. Le compteur repart à zéro à minuit (UTC).`,
         code: 'quota',
       });
     }
@@ -147,7 +153,7 @@ async function envoyer(req, res, user) {
   try {
     await inserer('conversations_llm', {
       id,
-      utilisateur: user.id,
+      appareil,
       conversation,
       tour: Number.isInteger(tour) && tour >= 0 ? tour : 0,
       mode,
@@ -167,7 +173,7 @@ async function envoyer(req, res, user) {
   return res.status(200).json({ reponse: sortie.reponse, id, restant });
 }
 
-async function noter(req, res, user) {
+async function noter(req, res, appareil) {
   const {
     id, note = null, correction = null, commentaire = null,
   } = req.body || {};
@@ -178,10 +184,10 @@ async function noter(req, res, user) {
       return res.status(400).json({ erreur: 'Texte trop long.' });
     }
   }
-  // Le filtre sur l'utilisateur empêche de noter l'échange d'un autre compte.
+  // Le filtre sur l'appareil empêche de noter l'échange d'un autre appareil.
   const lignes = await modifier(
     'conversations_llm',
-    `id=eq.${id}&utilisateur=eq.${user.id}`,
+    `id=eq.${id}&appareil=eq.${appareil}`,
     {
       note,
       correction: correction?.trim() || null,
@@ -199,21 +205,19 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ erreur: 'Méthode non autorisée' });
   if (!configure()) return res.status(503).json({ erreur: 'Service non configuré.' });
 
-  const jeton = jetonDe(req);
-  const user = jeton ? await utilisateurDuJeton(jeton) : null;
-  if (!user) {
-    return res.status(401).json({
-      erreur: jeton ? 'Session expirée. Reconnectez-vous.' : 'Connexion requise.',
-      code: 'session',
-      connexion_requise: true,
-    });
+  if (!memeSecret(String(req.headers['x-cle-assistant'] || ''), process.env.CHAT_CLE || '')) {
+    return res.status(403).json({ erreur: "Cette app n'a pas accès à l'assistant.", code: 'interdit' });
   }
-  if (!autorises().has(String(user.id).toLowerCase())) {
-    return res.status(403).json({ erreur: "Ce compte n'a pas accès à l'assistant de test.", code: 'interdit' });
+  const brut = String(req.headers['x-appareil'] || '');
+  if (!APPAREIL_VALIDE.test(brut)) {
+    return res.status(400).json({ erreur: "Identifiant d'appareil manquant ou invalide." });
   }
+  const appareil = hacher(brut);
 
   try {
-    return req.body?.action === 'noter' ? await noter(req, res, user) : await envoyer(req, res, user);
+    return req.body?.action === 'noter'
+      ? await noter(req, res, appareil)
+      : await envoyer(req, res, appareil);
   } catch (err) {
     console.error('Erreur du chat :', err);
     return res.status(500).json({ erreur: 'Erreur interne. Réessayez.' });
