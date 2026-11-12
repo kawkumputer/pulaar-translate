@@ -3,6 +3,9 @@
   "functions": {
     "api/translate.js": {
       "maxDuration": 120
+    },
+    "api/chat.js": {
+      "maxDuration": 60
     }
   },
   "headers": [
