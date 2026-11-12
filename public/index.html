@@ -232,6 +232,7 @@
     <p>
       <span data-i18n="pied.contact">Une question, une remarque, envie de contribuer ?</span>
       <a href="mailto:pulaartranslate@gmail.com">pulaartranslate@gmail.com</a>
+      · <a href="/confidentialite.html">Confidentialité</a>
     </p>
   </footer>
 
@@ -487,7 +488,11 @@ async function traduire() {
     const data = await rep.json();
     arreterChrono();
     if (!rep.ok) {
-      etat.textContent = data.erreur || t('etat.echec', langue);
+      // Le quota par connexion a son texte traduit ; les autres erreurs
+      // gardent le message du serveur.
+      etat.textContent = data.code === 'quota'
+        ? t('etat.quota', langue)
+        : (data.erreur || t('etat.echec', langue));
       etat.className = 'etat erreur';
       viderSortie();
       return;

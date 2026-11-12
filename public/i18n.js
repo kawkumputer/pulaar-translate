@@ -63,6 +63,9 @@ export const TEXTES = {
     'etat.termine':     'Terminé.',
     'etat.echec':       'Échec de la traduction.',
     'etat.reseau':      'Connexion impossible. Vérifiez votre réseau et réessayez.',
+    // Quota journalier par connexion (api/_quota.js). Pas encore en pulaar :
+    // à faire traduire par Abou (tools/i18n-manquants.js la signale).
+    'etat.quota':       'Limite de traductions du jour atteinte pour cette connexion. Réessayez demain.',
     'pied':             'Projet ouvert autour du pulaar du Fuuta Tooro. Les modèles sont publiés',
     'pied.lien':        'sur Hugging Face',
     'pied.suite':       'Les traductions automatiques comportent des erreurs : faites-les vérifier par un locuteur avant tout usage important.',

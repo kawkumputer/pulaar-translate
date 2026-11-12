@@ -1,15 +1,18 @@
-// Route serverless Vercel : relais entre le navigateur et le Space Hugging Face.
+// Route serverless Vercel : relais entre le navigateur (ou l'app mobile) et le
+// Space Hugging Face.
 //
-// Pourquoi ne pas appeler le Space directement depuis le navigateur ?
+// Pourquoi ne pas appeler le Space directement depuis le navigateur ou l'app ?
 //   - le relais evite les problemes de CORS ;
-//   - il permet de garder le Space privé plus tard sans toucher au front ;
-//   - il donne un endroit unique ou brancher un jour une limite de débit ;
-//   - il porte le jeton Hugging Face, qui ne doit jamais atteindre le navigateur.
+//   - il permet de garder le Space privé sans toucher au front ;
+//   - il applique le quota journalier (voir _quota.js) ;
+//   - il porte le jeton Hugging Face, qui ne doit jamais atteindre le navigateur
+//     ni l'app : un jeton embarqué dans une app se lit en quelques minutes.
 //
 // Le Space tourne sur ZeroGPU : compter quelques secondes par traduction, et
 // jusqu'à une minute si le Space sortait de veille. Le front doit l'annoncer.
 
 import { Client } from '@gradio/client';
+import { consommer, rendre } from './_quota.js';
 
 const SPACE = process.env.HF_SPACE || 'kawkumputer/PulaarAI';
 const DIRECTIONS = new Set(['fr → pul', 'pul → fr']);
@@ -63,6 +66,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ erreur: 'Direction inconnue.' });
   }
 
+  // Le quota se vérifie APRÈS la validation : une requête mal formée ne doit
+  // pas coûter une unité.
+  const quota = await consommer(req);
+  if (!quota.ok) {
+    return res.status(quota.statut).json(quota.corps);
+  }
+
   try {
     const client = await connecter();
     // "/translate" correspond a api_name="translate" cote Space (§14 du
@@ -73,9 +83,14 @@ export default async function handler(req, res) {
     if (typeof traduction !== 'string') {
       throw new Error('Réponse inattendue du Space');
     }
-    return res.status(200).json({ traduction, retours: RETOURS_ACTIFS });
+    return res.status(200).json({
+      traduction,
+      retours: RETOURS_ACTIFS,
+      restant: quota.restant, // null quand le quota n'a pas pu être compté
+    });
   } catch (err) {
     console.error('Echec de traduction :', err);
+    await rendre(quota.cles);
     // Le cas le plus frequent : le Space etait en veille et n'a pas repondu
     // dans le temps imparti. Ce n'est pas une erreur du visiteur.
     const message = String(err?.message || '');
@@ -89,6 +104,9 @@ export default async function handler(req, res) {
     if (quotaEpuise) {
       return res.status(429).json({
         erreur: 'Le quota GPU du jour est épuisé. Le service revient demain.',
+        // À distinguer du quota par personne (code 'quota') : ici, se
+        // connecter n'y changerait rien.
+        code: 'quota_gpu',
       });
     }
     return res.status(enVeille ? 503 : 500).json({

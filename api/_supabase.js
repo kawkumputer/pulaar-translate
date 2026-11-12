@@ -64,6 +64,43 @@ export function modifier(table, requete, champs) {
   });
 }
 
+// Appel d'une fonction SQL (voir supabase/migration_2026-11-11_quota.sql).
+export function rpc(fonction, params) {
+  return appeler(`rpc/${fonction}`, {
+    method: 'POST',
+    headers: enTetes(),
+    body: JSON.stringify(params),
+  });
+}
+
+// ── Vérification d'un jeton de connexion ────────────────────────────────────
+// L'app mobile envoie le jeton de session Supabase (Google ou Apple). On le
+// fait valider par Supabase lui-même plutôt que de vérifier la signature ici :
+// pas de secret JWT de plus à copier dans Vercel, et un compte supprimé ou
+// déconnecté est refusé aussitôt. Renvoie l'utilisateur, ou null.
+export async function utilisateurDuJeton(jeton) {
+  if (!configure() || typeof jeton !== 'string' || !jeton) return null;
+  const rep = await fetch(`${URL_BASE}/auth/v1/user`, {
+    headers: { apikey: CLE, Authorization: `Bearer ${jeton}` },
+  });
+  if (!rep.ok) return null;
+  const user = await rep.json();
+  return user && typeof user.id === 'string' ? user : null;
+}
+
+// Extrait le jeton de l'en-tête « Authorization: Bearer … ».
+export function jetonDe(req) {
+  const brut = String(req.headers.authorization || '');
+  const m = /^Bearer\s+(\S+)$/i.exec(brut);
+  return m ? m[1] : null;
+}
+
+// Empreinte salée d'une valeur quelconque (identifiant d'appareil…).
+export function hacher(valeur) {
+  const sel = process.env.HACHAGE_SEL || '';
+  return crypto.createHash('sha256').update(sel + valeur).digest('hex').slice(0, 32);
+}
+
 // ── Empreinte de l'IP ───────────────────────────────────────────────────────
 // On ne stocke jamais l'adresse elle-même. Le sel rend l'empreinte inutilisable
 // ailleurs : sans lui, un hachage de SHA-256 sur un espace aussi petit que les

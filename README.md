@@ -52,6 +52,19 @@ npx vercel --prod   # production
 | `ADMIN_MOT_DE_PASSE` | Accès à `/admin.html`. Sans elle, la page reste fermée |
 | `HACHAGE_SEL` | Chaîne aléatoire quelconque, pour saler l'empreinte des IP |
 | `MODELE_VERSION` | Version jugée par les retours. Défaut : `v11` |
+| `QUOTA_COMPTE` | Traductions par jour pour un compte de l'app. Défaut : `50` |
+| `QUOTA_INVITE` | Traductions par jour pour l'app sans compte (par appareil). Défaut : `5` |
+| `QUOTA_IP` | Traductions par jour et par IP (site, et plafond des invités de l'app). Défaut : `100` |
+
+### Quota journalier
+
+`/api/translate` compte les traductions par jour UTC (`api/_quota.js`). Il faut
+avoir exécuté `supabase/migration_2026-11-11_quota.sql`. Sans Supabase, le
+quota n'est pas appliqué (le traducteur reste ouvert) et le journal Vercel le
+signale. Un compte de l'app envoie son jeton Supabase (`Authorization: Bearer`),
+un invité son identifiant d'appareil (`X-Appareil`), le site rien.
+`QUOTA_IP` reste large : les opérateurs mobiles regroupent beaucoup d'abonnés
+derrière une même IP (CGNAT).
 
 Toutes sont à créer en type **Secret**, pour les environnements *Production*
 **et** *Preview* — sinon un déploiement d'aperçu part sans jeton. Une variable

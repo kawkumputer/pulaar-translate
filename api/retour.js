@@ -5,7 +5,9 @@
 // faudrait lui confier une clé, et une clé dans une page publique est une clé
 // publique. Tout passe donc par ici, avec la clé service côté serveur.
 
-import { configure, inserer, lire, hacherIp } from './_supabase.js';
+import {
+  configure, inserer, lire, hacherIp, jetonDe, utilisateurDuJeton,
+} from './_supabase.js';
 
 const DIRECTIONS = new Set(['fr → pul', 'pul → fr']);
 const VERDICTS = new Set(['bonne', 'mauvaise']);
@@ -70,9 +72,24 @@ export default async function handler(req, res) {
   }
 
   const correction = texte(corps.correction, LIMITES.correction);
-  const contributeur = texte(corps.contributeur, LIMITES.contributeur);
+  let contributeur = texte(corps.contributeur, LIMITES.contributeur);
   if (correction === undefined || contributeur === undefined) {
     return res.status(400).json({ erreur: 'Champ trop long.' });
+  }
+
+  // Depuis l'app, connecté : à défaut de nom saisi, on reprend celui du compte
+  // Google ou Apple. Jamais l'e-mail, qui finirait dans le dépouillement.
+  // Un jeton refusé n'empêche pas le retour : il est simplement anonyme.
+  if (!contributeur && jetonDe(req)) {
+    try {
+      const user = await utilisateurDuJeton(jetonDe(req));
+      const nom = user?.user_metadata?.full_name || user?.user_metadata?.name;
+      if (typeof nom === 'string' && nom.trim()) {
+        contributeur = nom.trim().slice(0, LIMITES.contributeur);
+      }
+    } catch (err) {
+      console.error('Jeton du retour non vérifié :', err);
+    }
   }
 
   // Une correction identique à la sortie du modèle ne dit rien : c'est presque
