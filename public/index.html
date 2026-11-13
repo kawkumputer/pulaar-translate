@@ -56,9 +56,14 @@
   }
   .page{max-width:900px; margin:0 auto; padding:32px 20px 64px}
   header{margin-bottom:28px}
+  /* Le titre passe à la ligne dans sa colonne (le titre pulaar est plus long) et
+     le choix de langue reste en haut à droite ; il ne descend sous le titre que
+     sur un petit écran. */
   .haut{display:flex; justify-content:space-between; align-items:flex-start;
-        gap:16px; flex-wrap:wrap}
-  .marque{display:flex; gap:16px; align-items:flex-start}
+        gap:16px; flex-wrap:nowrap}
+  .marque{display:flex; gap:16px; align-items:flex-start; flex:1 1 auto; min-width:0}
+  .marque > div{min-width:0}
+  @media (max-width:600px){ .haut{flex-wrap:wrap} }
   .logo{width:64px; height:64px; border-radius:15px; flex-shrink:0;
         box-shadow:0 2px 10px rgba(20,27,45,.18)}
   @media (max-width:520px){ .logo{width:48px; height:48px; border-radius:11px} }
@@ -83,9 +88,12 @@
     background:var(--alerte-fond); color:var(--alerte); border:1px solid currentColor;
     border-radius:10px; padding:11px 14px; font-size:.88rem; margin:16px 0 0;
   }
-  .grille{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:22px}
-  @media (max-width:720px){ .grille{grid-template-columns:1fr} }
-  .carte{background:var(--carte); border:1px solid var(--trait); border-radius:14px; padding:16px}
+  /* minmax(0,1fr) : une colonne ne peut pas grandir au-delà de sa moitié, quel que
+     soit le texte (le pulaar est plus long que le français). */
+  .grille{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; margin-top:22px}
+  @media (max-width:720px){ .grille{grid-template-columns:minmax(0,1fr)} }
+  .carte{background:var(--carte); border:1px solid var(--trait); border-radius:14px; padding:16px;
+         min-width:0; overflow-wrap:anywhere}
   label{display:block; font-size:.78rem; font-weight:600; text-transform:uppercase;
         letter-spacing:.04em; color:var(--doux); margin-bottom:8px}
   textarea,select{
