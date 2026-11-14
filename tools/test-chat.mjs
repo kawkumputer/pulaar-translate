@@ -29,7 +29,8 @@ const empreinte = (v) => crypto.createHash('sha256').update(`sel-de-test${v}`).d
 const H_TEL = empreinte(TEL);
 
 let quotaRetour = 299;   // ce que renvoie consommer_quota
-let endpoint = 'ok';     // ok | veille | coupe | panne | refus | sans_lora
+let endpoint = 'ok';     // ok | veille | coupe | panne | refus | sans_lora | sources
+let colonnesSources = true;  // false : la migration 2026-11-14 n'est pas encore passée
 let appels;              // tout ce qui a été demandé, par catégorie
 let inseres;             // lignes de conversations_llm
 
@@ -38,6 +39,7 @@ function remettre() {
   inseres = [];
   quotaRetour = 299;
   endpoint = 'ok';
+  colonnesSources = true;
 }
 
 const rep = (corps, status = 200) => ({
@@ -68,10 +70,25 @@ globalThis.fetch = async (url, options = {}) => {
       throw e;
     }
     if (endpoint === 'sans_lora') return rep([{ reponse: 'Jam tan.', tokens: 5, arrete: true }]);
+    if (endpoint === 'sources') {
+      return rep([{
+        reponse: 'Hitaande Murtuɗo jibinaa ko 1942.', tokens: 12, arrete: true, sources: 2,
+        lora: 'kawkumputer/pulaar-llm-instruct-v12',
+        sources_trouvees: [
+          { source: 'biographie Murtudo', texte: 'Murtuɗo jibinaa ko e hitaande 1942.' },
+          { source: 'ARPRIM (pulaar.org)', texte: 'Ceerno Murtuɗo jibinaa ko hitaande 1942.', score: 2 },
+          { pas: 'une source' },
+        ],
+      }]);
+    }
     return rep([{ reponse: 'Jam tan.', tokens: 5, arrete: true, lora: 'kawkumputer/pulaar-llm-instruct-v12' }]);
   }
   if (u.includes('/rest/v1/conversations_llm') && options.method === 'POST') {
-    inseres.push(JSON.parse(options.body));
+    const ligne = JSON.parse(options.body);
+    if (!colonnesSources && ('chercher' in ligne || 'sources' in ligne)) {
+      return rep({ code: 'PGRST204', message: "Could not find the 'chercher' column of 'conversations_llm'" }, 400);
+    }
+    inseres.push(ligne);
     return rep(null, 201);
   }
   if (u.includes('/rest/v1/conversations_llm') && options.method === 'PATCH') {
@@ -173,6 +190,37 @@ endpoint = 'sans_lora';
 r = await appeler(MSG);
 verifier('réponse sans lora : modèle « inconnu », jamais une version supposée',
   r.code === 200 && inseres[0]?.modele === 'inconnu', json(inseres[0]));
+
+verifier('sans recherche : chercher n est pas envoyé à l endpoint, sources vides, ligne marquée sans recherche',
+  !('chercher' in appels.endpoint[0].corps.inputs) && json(r.corps.sources) === '[]'
+  && inseres[0].chercher === false && inseres[0].sources === null, json({ e: appels.endpoint[0], l: inseres[0] }));
+
+console.log('Recherche dans les livres');
+remettre();
+endpoint = 'sources';
+r = await appeler({ ...MSG, message: 'Hol hitaande Murtuɗo jibinaa?', chercher: true });
+verifier('chercher transmis à l endpoint', appels.endpoint[0].corps.inputs.chercher === true, json(appels.endpoint[0]));
+verifier('sources renvoyées à l app, propres (source et texte seulement, objets mal formés écartés)',
+  r.code === 200 && json(r.corps.sources) === json([
+    { source: 'biographie Murtudo', texte: 'Murtuɗo jibinaa ko e hitaande 1942.' },
+    { source: 'ARPRIM (pulaar.org)', texte: 'Ceerno Murtuɗo jibinaa ko hitaande 1942.' }]), json(r.corps));
+verifier('ligne enregistrée avec chercher et les sources',
+  inseres[0].chercher === true && inseres[0].sources.length === 2, json(inseres[0]));
+remettre();
+endpoint = 'sources';
+colonnesSources = false;
+r = await appeler({ ...MSG, chercher: true });
+verifier('colonnes absentes (migration pas encore passée) : échange enregistré quand même, sans elles',
+  r.code === 200 && /^[0-9a-f-]{36}$/.test(r.corps.id) && inseres.length === 1 && !('sources' in inseres[0])
+  && r.corps.sources.length === 2, json({ r: r.corps, l: inseres }));
+for (const [nom, corps] of [
+  ['chercher non booléen', { ...MSG, chercher: 'oui' }],
+  ['chercher en mode traduction', { ...MSG, mode: 'fr', chercher: true }],
+]) {
+  remettre();
+  r = await appeler(corps);
+  verifier(`${nom} : 400, aucune unité`, r.code === 400 && appels.consommer.length === 0, json(r));
+}
 
 console.log('Endpoint indisponible : unités rendues');
 for (const [cas, attendu, code] of [['veille', 503, 'reveil'], ['coupe', 503, 'reveil'], ['panne', 500, undefined], ['refus', 500, undefined]]) {

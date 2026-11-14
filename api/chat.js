@@ -14,8 +14,11 @@
 // l'accès à toutes les copies de l'app.
 //
 // Deux actions, sur la même route pour ne compter qu'une fonction Vercel :
-//   envoyer (défaut) : { mode, message, historique, chaud, conversation, tour }
-//                      → { reponse, id, restant }
+//   envoyer (défaut) : { mode, message, historique, chaud, chercher, conversation, tour }
+//                      → { reponse, id, restant, sources }
+//   chercher (facultatif, 2026-11-14) : l'interrupteur « Chercher dans les livres » de l'app. L'endpoint
+//   cherche alors dans les livres, le corpus et ARPRIM, et répond d'après les extraits trouvés, rendus
+//   dans `sources` ([{ source, texte }], vide si rien de pertinent) pour que l'app les montre.
 //   noter            : { action: 'noter', id, note, correction, commentaire }
 //                      → { ok: true }
 //
@@ -34,6 +37,7 @@ const MODES = new Set(['conv', 'fr', 'pul']);
 const NOTES = new Set(['juste', 'faux', 'invente', 'pas_pulaar']);
 const MAX_CARACTERES = 1000;
 const MAX_HISTORIQUE = 6; // le handler n'en garde pas plus
+const MAX_SOURCES = 5;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Même format que l'identifiant d'appareil de Pulaar Translate.
 const APPAREIL_VALIDE = /^[A-Za-z0-9_-]{16,64}$/;
@@ -65,7 +69,16 @@ export function versionModele(lora) {
   return m ? m[1] : (process.env.MODELE_LLM || 'inconnu');
 }
 
-// Appel de l'endpoint. Renvoie { ok: true, reponse, tokens, modele } ou { ok: false }
+// Les extraits renvoyés par l'endpoint, filtrés : on ne relaie que des { source, texte } bien formés.
+export function sourcesValides(s) {
+  if (!Array.isArray(s)) return [];
+  return s.filter((x) => x && typeof x.source === 'string' && typeof x.texte === 'string'
+    && x.texte.length <= 2000 && x.source.length <= 200)
+    .slice(0, MAX_SOURCES)
+    .map((x) => ({ source: x.source, texte: x.texte }));
+}
+
+// Appel de l'endpoint. Renvoie { ok: true, reponse, tokens, modele, sources } ou { ok: false }
 // quand il dort ou démarre.
 async function appelerEndpoint(entree) {
   const url = process.env.HF_ENDPOINT_CHAT;
@@ -91,7 +104,11 @@ async function appelerEndpoint(entree) {
     if (sortie?.erreur) throw new Error(`Endpoint a refusé : ${sortie.erreur}`);
     if (typeof sortie?.reponse !== 'string') throw new Error("Réponse inattendue de l'endpoint");
     return {
-      ok: true, reponse: sortie.reponse, tokens: sortie.tokens ?? null, modele: versionModele(sortie.lora),
+      ok: true,
+      reponse: sortie.reponse,
+      tokens: sortie.tokens ?? null,
+      modele: versionModele(sortie.lora),
+      sources: sourcesValides(sortie.sources_trouvees),
     };
   } catch (err) {
     if (err?.name === 'AbortError') return { ok: false };
@@ -103,9 +120,13 @@ async function appelerEndpoint(entree) {
 
 async function envoyer(req, res, appareil) {
   const {
-    mode = 'conv', message, historique = [], chaud = false, conversation, tour = 0,
+    mode = 'conv', message, historique = [], chaud = false, chercher = false, conversation, tour = 0,
   } = req.body || {};
   if (!MODES.has(mode)) return res.status(400).json({ erreur: 'Mode inconnu.' });
+  if (typeof chercher !== 'boolean') return res.status(400).json({ erreur: 'chercher doit être vrai ou faux.' });
+  if (chercher && mode !== 'conv') {
+    return res.status(400).json({ erreur: 'La recherche dans les livres ne marche qu’en discussion.' });
+  }
   if (!texteValide(message)) {
     return res.status(400).json({
       erreur: `Message vide ou trop long (maximum ${MAX_CARACTERES} caractères).`,
@@ -143,6 +164,7 @@ async function envoyer(req, res, appareil) {
 
   const hist = historique.slice(-MAX_HISTORIQUE);
   const entree = { mode, message: message.trim(), historique: hist, chaud: Boolean(chaud) };
+  if (chercher) entree.chercher = true;
   const debut = Date.now();
   let sortie;
   try {
@@ -161,27 +183,38 @@ async function envoyer(req, res, appareil) {
   }
 
   const id = crypto.randomUUID();
+  const ligne = {
+    id,
+    appareil,
+    conversation,
+    tour: Number.isInteger(tour) && tour >= 0 ? tour : 0,
+    mode,
+    message: entree.message,
+    historique: hist,
+    reponse: sortie.reponse,
+    modele: sortie.modele,
+    chaud: entree.chaud,
+    duree_ms: Date.now() - debut,
+    tokens: sortie.tokens,
+    // migration_2026-11-14_conversations_llm_sources.sql
+    chercher: Boolean(chercher),
+    sources: sortie.sources.length ? sortie.sources : null,
+  };
   try {
-    await inserer('conversations_llm', {
-      id,
-      appareil,
-      conversation,
-      tour: Number.isInteger(tour) && tour >= 0 ? tour : 0,
-      mode,
-      message: entree.message,
-      historique: hist,
-      reponse: sortie.reponse,
-      modele: sortie.modele,
-      chaud: entree.chaud,
-      duree_ms: Date.now() - debut,
-      tokens: sortie.tokens,
-    });
+    try {
+      await inserer('conversations_llm', ligne);
+    } catch (err) {
+      // Colonnes pas encore créées dans Supabase : l'échange est enregistré sans elles plutôt que perdu.
+      if (!/PGRST204|chercher|sources/.test(String(err?.message))) throw err;
+      const { chercher: _c, sources: _s, ...sansSources } = ligne;
+      await inserer('conversations_llm', sansSources);
+    }
   } catch (err) {
     // La réponse est donnée quand même ; seule la notation sera impossible.
     console.error('Échange non enregistré :', err);
-    return res.status(200).json({ reponse: sortie.reponse, id: null, restant });
+    return res.status(200).json({ reponse: sortie.reponse, id: null, restant, sources: sortie.sources });
   }
-  return res.status(200).json({ reponse: sortie.reponse, id, restant });
+  return res.status(200).json({ reponse: sortie.reponse, id, restant, sources: sortie.sources });
 }
 
 async function noter(req, res, appareil) {
