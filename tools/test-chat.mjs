@@ -29,7 +29,7 @@ const empreinte = (v) => crypto.createHash('sha256').update(`sel-de-test${v}`).d
 const H_TEL = empreinte(TEL);
 
 let quotaRetour = 299;   // ce que renvoie consommer_quota
-let endpoint = 'ok';     // ok | veille | coupe | panne | refus
+let endpoint = 'ok';     // ok | veille | coupe | panne | refus | sans_lora
 let appels;              // tout ce qui a été demandé, par catégorie
 let inseres;             // lignes de conversations_llm
 
@@ -67,7 +67,8 @@ globalThis.fetch = async (url, options = {}) => {
       e.name = 'AbortError';
       throw e;
     }
-    return rep([{ reponse: 'Jam tan.', tokens: 5, arrete: true, lora: 'x' }]);
+    if (endpoint === 'sans_lora') return rep([{ reponse: 'Jam tan.', tokens: 5, arrete: true }]);
+    return rep([{ reponse: 'Jam tan.', tokens: 5, arrete: true, lora: 'kawkumputer/pulaar-llm-instruct-v12' }]);
   }
   if (u.includes('/rest/v1/conversations_llm') && options.method === 'POST') {
     inseres.push(JSON.parse(options.body));
@@ -165,8 +166,13 @@ verifier('entrée normalisée (chaud booléen, message nettoyé)',
 const l = inseres[0];
 verifier('échange enregistré avec l id renvoyé et l empreinte de l appareil',
   l && l.id === r.corps.id && l.appareil === H_TEL && l.conversation === CONV && l.tour === 9
-  && l.modele === 'v10' && l.reponse === 'Jam tan.' && l.historique.length === 6, json(l));
+  && l.modele === 'v12' && l.reponse === 'Jam tan.' && l.historique.length === 6, json(l));
 verifier('aucune unité rendue', appels.rendre.length === 0, json(appels.rendre));
+remettre();
+endpoint = 'sans_lora';
+r = await appeler(MSG);
+verifier('réponse sans lora : modèle « inconnu », jamais une version supposée',
+  r.code === 200 && inseres[0]?.modele === 'inconnu', json(inseres[0]));
 
 console.log('Endpoint indisponible : unités rendues');
 for (const [cas, attendu, code] of [['veille', 503, 'reveil'], ['coupe', 503, 'reveil'], ['panne', 500, undefined], ['refus', 500, undefined]]) {

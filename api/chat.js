@@ -56,7 +56,16 @@ function historiqueValide(h) {
   );
 }
 
-// Appel de l'endpoint. Renvoie { ok: true, reponse, tokens } ou { ok: false }
+// La version du modèle servi, lue dans la réponse de l'endpoint : le handler
+// renvoie le dépôt de la LoRA (kawkumputer/pulaar-llm-instruct-v12 → v12).
+// L'étiquette suit donc l'endpoint, sans variable à changer à chaque version.
+// MODELE_LLM ne sert que si la réponse ne la donne pas.
+export function versionModele(lora) {
+  const m = typeof lora === 'string' ? lora.match(/-(v\d+[a-z]?)$/) : null;
+  return m ? m[1] : (process.env.MODELE_LLM || 'inconnu');
+}
+
+// Appel de l'endpoint. Renvoie { ok: true, reponse, tokens, modele } ou { ok: false }
 // quand il dort ou démarre.
 async function appelerEndpoint(entree) {
   const url = process.env.HF_ENDPOINT_CHAT;
@@ -81,7 +90,9 @@ async function appelerEndpoint(entree) {
     const sortie = Array.isArray(corps) ? corps[0] : corps;
     if (sortie?.erreur) throw new Error(`Endpoint a refusé : ${sortie.erreur}`);
     if (typeof sortie?.reponse !== 'string') throw new Error("Réponse inattendue de l'endpoint");
-    return { ok: true, reponse: sortie.reponse, tokens: sortie.tokens ?? null };
+    return {
+      ok: true, reponse: sortie.reponse, tokens: sortie.tokens ?? null, modele: versionModele(sortie.lora),
+    };
   } catch (err) {
     if (err?.name === 'AbortError') return { ok: false };
     throw err;
@@ -160,7 +171,7 @@ async function envoyer(req, res, appareil) {
       message: entree.message,
       historique: hist,
       reponse: sortie.reponse,
-      modele: process.env.MODELE_LLM || 'v10',
+      modele: sortie.modele,
       chaud: entree.chaud,
       duree_ms: Date.now() - debut,
       tokens: sortie.tokens,
