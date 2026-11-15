@@ -36,7 +36,7 @@ export const TEXTES = {
     // après avoir fait défiler la page. La seconde ligne est composée un peu
     // plus petite pour que le bloc reste léger à mesure que la liste grandit.
     'credits.fonde':    'Fondé par Hamath Kane et Abou Sy',
-    'credits.avec':     'Contributions de Bocar Amadou Ba (ARPRIM), Alassane Mountaga Sall « Dembel », Hamet Amadou Ly, Bacca Bah et Oumar El Hadj Thiam, sur le traducteur comme sur le modèle de langue en développement.',
+    'credits.avec':     'Contributions de Bocar Amadou Ba (ARPRIM), Alassane Mountaga Sall « Dembel », Hamet Amadou Ly, Bacca Bah, Oumar El Hadj Thiam et Amadou Malal Gueye, sur le traducteur comme sur le modèle de langue en développement.',
     // Mesuré le 2026-09-19 sur dix traductions, après le chargement du modèle
     // en float16 : médiane 0,7 s, maximum 4,8 s sur le tout premier appel.
     // Cinq secondes couvrent donc le pire cas observé, là où « deux » le
@@ -103,7 +103,7 @@ export const TEXTES = {
     // de l'association, celui que porte la ligne française — deux sigles
     // différents sur la même page seraient une faute visible. Et les guillemets
     // droits passés en chevrons, pour s'accorder au reste du site.
-    'credits.avec':     'Wallidiiɓe Bokara Aamadu Bah (ARPRIM), Alasan Muntagaa Sal « Dembel », Hammee Aamadu Lih, Bacca Bah e Umar Elhajji Caam, to bannge firo e to mbaadi loosɗingol.',
+    'credits.avec':     'Wallidiiɓe Bokara Aamadu Bah (ARPRIM), Alasan Muntagaa Sal « Dembel », Hammee Aamadu Lih, Bacca Bah, Umar Elhajji Caam e Aamadu Malal Gey, to bannge firo e to mbaadi loosɗingol.',
     // Espace double retirée dans « haa  hojom ».
     'avis':             'Model o yiilotoo ko dow GPU feccito : limee les hojomaaji joy kala firo. Adiingo ngo caggal daawal ina waawi yahde haa hojom, fotde ko gollorgal ngal ina seerta e faɗɗere.',
     'label.source':     'Winndannde iwdi (lasli).',
