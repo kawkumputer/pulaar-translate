@@ -24,6 +24,10 @@ process.env.HACHAGE_SEL = 'sel-de-test';
 process.env.HF_ENDPOINT_CHAT = ENDPOINT;
 process.env.HF_TOKEN_CHAT = 'jeton-endpoint';
 process.env.CHAT_CLE = CLE;
+process.env.CHAT_ADMIN_CLE = 'code-de-veille-de-test';
+process.env.HF_TOKEN_ENDPOINTS = 'jeton-gestion-endpoints';
+process.env.HF_ENDPOINT_NOM = 'espace/assistant';
+const VEILLE = 'https://api.endpoints.huggingface.cloud/v2/endpoint/espace/assistant/scale-to-zero';
 
 const empreinte = (v) => crypto.createHash('sha256').update(`sel-de-test${v}`).digest('hex').slice(0, 32);
 const H_TEL = empreinte(TEL);
@@ -31,15 +35,17 @@ const H_TEL = empreinte(TEL);
 let quotaRetour = 299;   // ce que renvoie consommer_quota
 let endpoint = 'ok';     // ok | veille | coupe | panne | refus | sans_lora | sources
 let colonnesSources = true;  // false : la migration 2026-11-14 n'est pas encore passée
+let veilleHF = 200;      // réponse de Hugging Face à la mise en veille
 let appels;              // tout ce qui a été demandé, par catégorie
 let inseres;             // lignes de conversations_llm
 
 function remettre() {
-  appels = { consommer: [], rendre: [], endpoint: [], patch: [] };
+  appels = { consommer: [], rendre: [], endpoint: [], patch: [], veille: [] };
   inseres = [];
   quotaRetour = 299;
   endpoint = 'ok';
   colonnesSources = true;
+  veilleHF = 200;
 }
 
 const rep = (corps, status = 200) => ({
@@ -83,6 +89,10 @@ globalThis.fetch = async (url, options = {}) => {
     }
     return rep([{ reponse: 'Jam tan.', tokens: 5, arrete: true, lora: 'kawkumputer/pulaar-llm-instruct-v12' }]);
   }
+  if (u === VEILLE) {
+    appels.veille.push({ methode: options.method, entetes: options.headers });
+    return rep(veilleHF === 200 ? { name: 'assistant', status: { state: 'scaledToZero' } } : { error: 'non' }, veilleHF);
+  }
   if (u.includes('/rest/v1/conversations_llm') && options.method === 'POST') {
     const ligne = JSON.parse(options.body);
     if (!colonnesSources && ('chercher' in ligne || 'sources' in ligne)) {
@@ -109,11 +119,12 @@ function fausseReponse() {
   return r;
 }
 
-async function appeler(corps, { cle = CLE, appareil = TEL, methode = 'POST' } = {}) {
+async function appeler(corps, { cle = CLE, appareil = TEL, methode = 'POST', admin = null } = {}) {
   const res = fausseReponse();
   const headers = {};
   if (cle !== null) headers['x-cle-assistant'] = cle;
   if (appareil !== null) headers['x-appareil'] = appareil;
+  if (admin !== null) headers['x-admin-cle'] = admin;
   await chat({ method: methode, headers, body: corps }, res);
   return res;
 }
@@ -185,6 +196,7 @@ verifier('échange enregistré avec l id renvoyé et l empreinte de l appareil',
   l && l.id === r.corps.id && l.appareil === H_TEL && l.conversation === CONV && l.tour === 9
   && l.modele === 'v12' && l.reponse === 'Jam tan.' && l.historique.length === 6, json(l));
 verifier('aucune unité rendue', appels.rendre.length === 0, json(appels.rendre));
+verifier('version du modèle renvoyée à l app (pied de page)', r.corps.modele === 'v12', json(r.corps));
 remettre();
 endpoint = 'sans_lora';
 r = await appeler(MSG);
@@ -276,6 +288,58 @@ for (const [nom, corps] of [
   verifier(`${nom} : 400`, r.code === 400, json(r));
 }
 verifier('noter ne consomme pas de quota', appels.consommer.length === 1, json(appels.consommer));
+
+console.log('Mise en veille (code CHAT_ADMIN_CLE)');
+const BON = 'code-de-veille-de-test';
+for (const [nom, opts] of [
+  ['sans code', {}],
+  ['mauvais code', { admin: 'mauvais' }],
+  ['code vide', { admin: '' }],
+]) {
+  for (const action of ['admin', 'dormir']) {
+    remettre();
+    r = await appeler({ action }, opts);
+    verifier(`${action}, ${nom} : 403 admin, Hugging Face non appelé`,
+      r.code === 403 && r.corps.code === 'admin' && appels.veille.length === 0, json(r));
+  }
+}
+const sauveAdmin = process.env.CHAT_ADMIN_CLE;
+delete process.env.CHAT_ADMIN_CLE;
+remettre();
+r = await appeler({ action: 'dormir' }, { admin: '' });
+verifier('CHAT_ADMIN_CLE absente dans Vercel : refusé, même avec un code vide',
+  r.code === 403 && appels.veille.length === 0, json(r));
+process.env.CHAT_ADMIN_CLE = sauveAdmin;
+remettre();
+r = await appeler({ action: 'dormir' }, { admin: BON, cle: 'mauvaise' });
+verifier('bon code mais sans la clé de l app : 403 interdit', r.code === 403 && r.corps.code === 'interdit'
+  && appels.veille.length === 0, json(r));
+remettre();
+r = await appeler({ action: 'admin' }, { admin: BON });
+verifier('admin, bon code : 200, rien d autre ne se passe', r.code === 200 && r.corps.ok === true
+  && appels.veille.length === 0 && appels.consommer.length === 0 && appels.endpoint.length === 0, json(r));
+remettre();
+r = await appeler({ action: 'dormir' }, { admin: BON });
+verifier('dormir, bon code : 200', r.code === 200 && r.corps.ok === true, json(r));
+verifier('… scale-to-zero de l endpoint configuré, en POST, avec HF_TOKEN_ENDPOINTS (pas le jeton du chat)',
+  appels.veille.length === 1 && appels.veille[0].methode === 'POST'
+  && appels.veille[0].entetes.Authorization === 'Bearer jeton-gestion-endpoints', json(appels.veille));
+verifier('… sans quota ni appel du modèle', appels.consommer.length === 0 && appels.endpoint.length === 0, json(appels));
+remettre();
+veilleHF = 403;
+r = await appeler({ action: 'dormir' }, { admin: BON });
+verifier('Hugging Face refuse : 502 avec un message', r.code === 502 && /refusé/.test(r.corps.erreur), json(r));
+for (const [nom, cle, val] of [['HF_ENDPOINT_NOM absent', 'HF_ENDPOINT_NOM', undefined],
+  ['HF_ENDPOINT_NOM mal formé', 'HF_ENDPOINT_NOM', '../../autre'],
+  ['HF_TOKEN_ENDPOINTS absent', 'HF_TOKEN_ENDPOINTS', undefined]]) {
+  const avant = process.env[cle];
+  if (val === undefined) delete process.env[cle]; else process.env[cle] = val;
+  remettre();
+  r = await appeler({ action: 'dormir' }, { admin: BON });
+  verifier(`${nom} : 503 non_configure, Hugging Face non appelé`,
+    r.code === 503 && r.corps.code === 'non_configure' && appels.veille.length === 0, json(r));
+  process.env[cle] = avant;
+}
 
 console.log(echecs ? `\n${echecs} échec(s)` : '\nTout passe.');
 process.exit(echecs ? 1 : 0);

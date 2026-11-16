@@ -21,6 +21,13 @@
 //   dans `sources` ([{ source, texte }], vide si rien de pertinent) pour que l'app les montre.
 //   noter            : { action: 'noter', id, note, correction, commentaire }
 //                      → { ok: true }
+//   admin, dormir (2026-11-16) : réservés à qui a le code CHAT_ADMIN_CLE (en-tête X-Admin-Cle), choisi par
+//   Hamath, propre à ce bouton : il ne donne aucun autre droit. « admin » vérifie le code (l'app ne le garde que
+//   s'il est bon) ; « dormir » endort l'endpoint tout de suite au lieu d'attendre 15 min sans message
+//   (scale-to-zero de Hugging Face : facturation arrêtée, réveil seul au message suivant ; ce n'est pas la
+//   pause, qui ne se réveille pas). Il faut HF_TOKEN_ENDPOINTS (droit d'écriture sur les endpoints) et
+//   HF_ENDPOINT_NOM (espace/nom de l'endpoint).
+//                      → { ok: true }
 //
 // Chaque échange est enregistré dans conversations_llm (voir
 // supabase/migration_2026-11-12_conversations_llm.sql) : c'est la matière
@@ -43,6 +50,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const APPAREIL_VALIDE = /^[A-Za-z0-9_-]{16,64}$/;
 // Au-delà, la fonction Vercel (maxDuration 60) serait coupée sans réponse.
 const DELAI_ENDPOINT_MS = 50_000;
+const API_ENDPOINTS = 'https://api.endpoints.huggingface.cloud/v2/endpoint';
+const NOM_ENDPOINT = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
 function entier(nom, defaut) {
   const v = Number.parseInt(process.env[nom] ?? '', 10);
@@ -212,9 +221,36 @@ async function envoyer(req, res, appareil) {
   } catch (err) {
     // La réponse est donnée quand même ; seule la notation sera impossible.
     console.error('Échange non enregistré :', err);
-    return res.status(200).json({ reponse: sortie.reponse, id: null, restant, sources: sortie.sources });
+    return res.status(200).json({
+      reponse: sortie.reponse, id: null, restant, sources: sortie.sources, modele: sortie.modele,
+    });
   }
-  return res.status(200).json({ reponse: sortie.reponse, id, restant, sources: sortie.sources });
+  return res.status(200).json({
+    reponse: sortie.reponse, id, restant, sources: sortie.sources, modele: sortie.modele,
+  });
+}
+
+function admin(req) {
+  return memeSecret(String(req.headers['x-admin-cle'] || ''), process.env.CHAT_ADMIN_CLE || '');
+}
+
+// Endort l'endpoint tout de suite. Hugging Face répond par l'endpoint mis à jour.
+async function dormir(res) {
+  const nom = process.env.HF_ENDPOINT_NOM || '';
+  const jeton = process.env.HF_TOKEN_ENDPOINTS;
+  if (!NOM_ENDPOINT.test(nom) || !jeton) {
+    return res.status(503).json({ erreur: 'La mise en veille n’est pas configurée.', code: 'non_configure' });
+  }
+  const rep = await fetch(`${API_ENDPOINTS}/${nom}/scale-to-zero`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${jeton}` },
+  });
+  if (!rep.ok) {
+    const detail = await rep.text();
+    console.error(`Mise en veille refusée : ${rep.status} ${detail.slice(0, 300)}`);
+    return res.status(502).json({ erreur: 'Hugging Face a refusé la mise en veille. Réessayez plus tard.' });
+  }
+  return res.status(200).json({ ok: true });
 }
 
 async function noter(req, res, appareil) {
@@ -258,8 +294,15 @@ export default async function handler(req, res) {
   }
   const appareil = hacher(brut);
 
+  const action = req.body?.action;
+  if (action === 'admin' || action === 'dormir') {
+    if (!admin(req)) return res.status(403).json({ erreur: 'Code incorrect.', code: 'admin' });
+    if (action === 'admin') return res.status(200).json({ ok: true });
+  }
+
   try {
-    return req.body?.action === 'noter'
+    if (action === 'dormir') return await dormir(res);
+    return action === 'noter'
       ? await noter(req, res, appareil)
       : await envoyer(req, res, appareil);
   } catch (err) {
