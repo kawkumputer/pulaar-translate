@@ -43,7 +43,7 @@ import { rendre } from './_quota.js';
 const MODES = new Set(['conv', 'fr', 'pul']);
 const NOTES = new Set(['juste', 'faux', 'invente', 'pas_pulaar']);
 const MAX_CARACTERES = 1000;
-const MAX_HISTORIQUE = 6; // le handler n'en garde pas plus
+const MAX_HISTORIQUE = 12; // le handler en garde autant (TOURS_GARDES=12 depuis v15c, 2026-11-17)
 const MAX_SOURCES = 5;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Même format que l'identifiant d'appareil de Pulaar Translate.

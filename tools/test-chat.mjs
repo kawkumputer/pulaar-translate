@@ -173,7 +173,7 @@ for (const [nom, corps] of [
 
 console.log('Échange réussi');
 remettre();
-const histo = Array.from({ length: 9 }, (_, i) => [`q${i}`, `r${i}`]);
+const histo = Array.from({ length: 15 }, (_, i) => [`q${i}`, `r${i}`]);
 r = await appeler({ ...MSG, historique: histo, chaud: 1, mode: 'conv', tour: 9 });
 verifier('200 avec réponse, id et restant',
   r.code === 200 && r.corps.reponse === 'Jam tan.' && /^[0-9a-f-]{36}$/.test(r.corps.id) && r.corps.restant === 299,
@@ -187,14 +187,14 @@ verifier('l identifiant brut de l appareil n est envoyé nulle part',
   !json(appels).includes(TEL) && !json(inseres).includes(TEL), 'fuite de l identifiant brut');
 const e = appels.endpoint[0];
 verifier('endpoint appelé avec HF_TOKEN_CHAT', e.entetes.Authorization === 'Bearer jeton-endpoint', json(e.entetes));
-verifier('historique tronqué aux 6 derniers échanges',
-  json(e.corps.inputs.historique) === json(histo.slice(-6)), json(e.corps.inputs.historique));
+verifier('historique tronqué aux 12 derniers échanges',
+  json(e.corps.inputs.historique) === json(histo.slice(-12)), json(e.corps.inputs.historique));
 verifier('entrée normalisée (chaud booléen, message nettoyé)',
   e.corps.inputs.chaud === true && e.corps.inputs.message === 'Jam waali' && e.corps.inputs.mode === 'conv', json(e.corps));
 const l = inseres[0];
 verifier('échange enregistré avec l id renvoyé et l empreinte de l appareil',
   l && l.id === r.corps.id && l.appareil === H_TEL && l.conversation === CONV && l.tour === 9
-  && l.modele === 'v12' && l.reponse === 'Jam tan.' && l.historique.length === 6, json(l));
+  && l.modele === 'v12' && l.reponse === 'Jam tan.' && l.historique.length === 12, json(l));
 verifier('aucune unité rendue', appels.rendre.length === 0, json(appels.rendre));
 verifier('version du modèle renvoyée à l app (pied de page)', r.corps.modele === 'v12', json(r.corps));
 remettre();
