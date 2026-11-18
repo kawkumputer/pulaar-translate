@@ -70,6 +70,7 @@ export const TEXTES = {
     'pied.lien':        'sur Hugging Face',
     'pied.suite':       'Les traductions automatiques comportent des erreurs : faites-les vérifier par un locuteur avant tout usage important.',
     'pied.contact':     'Une question, une remarque, envie de contribuer ?',
+    'apps.texte':       'Pulaar Translate existe aussi en application pour téléphone :',
 
     // Retours des visiteurs. Ce sont eux qui disent au modèle où il se trompe :
     // le « non » doit être aussi facile à donner que le « oui ».
@@ -133,6 +134,8 @@ export const TEXTES = {
     'pied.lien':        'nder Hugging Face',
     'pied.suite':       'Firooji otomatik ɗi ina coomi juumreeji ; yo kaaloowo ɗemgal ngal ƴeewtindo ɗum, ko adii kala kuutoragol paayodinngol',
     'pied.contact':     'Naamnal, Teskuya, Aɗa muuyi addude ballal ?',
+    // 2026-11-18 : à traduire par Hamath ou Abou Sy (en attendant, repli sur le français).
+    'apps.texte':       '',
 
     'retour.question':  'Mbele ngoo firo ango regii ?',
     'retour.oui':       'Eey',
